@@ -1,3 +1,4 @@
+import { generateAccessToken, generateRefreshToken } from "../utils/token";
 import prisma from "/lib/prisma.ts";
 import argon2 from "argon2";
 
@@ -6,30 +7,45 @@ const authController = {
     try {
       let { email, phone, password } = req.body;
 
-      let userFromDB = prisma.users.findUnique({
-        where: {
-          email: email,
-        },
-      });
-      if (!userFromDB) {
-        userFromDB = prisma.users.findUnique({
+      let user;
+      if (email) {
+        user = prisma.users.findUnique({
+          where: {
+            email: email,
+          },
+        });
+      }
+
+      if (phone) {
+        user = prisma.users.findUnique({
           where: {
             phone: phone,
           },
         });
       }
-      if (!userFromDB) {
-        return res.status(404).send("User not found");
+
+      if (!user) {
+        return res.status(400).send("User not found");
       }
+
       const isValid = await argon2.verify(userFromDB.password, password);
+
       if (!isValid) return res.status(401).json({ error: "Wrong Password" });
-      const token = jwt.sign({ userId: user.id }, "Allah_y5lilna_ye@bau$$", {
-        expiresIn: "1h",
+
+      const accessToken = generateAccessToken();
+      const refreshToken = generateRefreshToken();
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          refreshToken,
+        },
       });
 
-      res.json({
+      res.status(201).json({
         message: "Login successful",
-        token: token,
+        accessToken: accessToken,
+        refreshToken,
       });
     } catch (err) {
       console.error(err);
@@ -75,8 +91,14 @@ const authController = {
         },
       });
     } catch (err) {
+      if (err.code === "P2002") {
+        return res
+          .status(409)
+          .json({ message: "Email or phone already exists" });
+      }
+
       console.error(err);
-      res.status(500).send("Internal Server Error");
+      return res.status(500).json({ message: "Internal Server Error" });
     }
   },
 };

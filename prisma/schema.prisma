@@ -19,6 +19,7 @@ model User {
   fullName                  String?
   
   // Verification & Security
+  refreshToken              String?   @unique
   is_email_verified         Boolean   @default(false)
   email_verification_token  String?
   email_token_expires_at    DateTime?
