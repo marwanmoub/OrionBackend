@@ -1,5 +1,5 @@
-import { generateAccessToken, generateRefreshToken } from "../utils/token";
-import prisma from "/lib/prisma.ts";
+import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
+import prisma from "../lib/prisma.js";
 import argon2 from "argon2";
 
 const authController = {
@@ -9,7 +9,7 @@ const authController = {
 
       let user;
       if (email) {
-        user = prisma.users.findUnique({
+        user = prisma.user.findUnique({
           where: {
             email: email,
           },
@@ -17,7 +17,7 @@ const authController = {
       }
 
       if (phone) {
-        user = prisma.users.findUnique({
+        user = prisma.user.findUnique({
           where: {
             phone: phone,
           },
@@ -54,6 +54,7 @@ const authController = {
   },
 
   signUp: async (req, res) => {
+    console.log("here");
     try {
       let { fullName, email, phone, password } = req.body;
       const hashedPassword = await argon2.hash(password);
@@ -76,11 +77,13 @@ const authController = {
       });
 
       if (!createUser) {
+        console.log("failed");
         return res.status(400).json({
           message: "Failed to create user",
         });
       }
 
+      console.log(createUser);
       return res.status(201).json({
         message: "User created successfully",
         user: {
