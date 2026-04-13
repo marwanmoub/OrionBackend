@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client/extension";
-
-const prisma = new PrismaClient();
+import prisma from "/lib/prisma.ts";
 
 const authController = {
   login: async (req, res) => {
@@ -11,7 +9,7 @@ const authController = {
         where: {
           email: email,
         },
-      }); // TODO: Fix table name]
+      });
       if (!userFromDB) {
         userFromDB = prisma.users.findUnique({
           where: {
