@@ -1,13 +1,17 @@
 import express from "express";
-const { PrismaClient } = require('@prisma/client');
-const argon2 = require('argon2');
-const jwt = require('jsonwebtoken');
+import { argon2 } from "argon2";
+import jwt from "jwt";
+import authRouter from "./routes/auth.routes";
+
 const prisma = new PrismaClient();
 const app = express();
 const PORT = 3000;
 
+const router = express.router();
+
 app.use(express.json());
 
+<<<<<<< HEAD
 app.post("/Login",async (req, res) => {
   try{
   let {email,phone, password} = req.body;
@@ -76,6 +80,10 @@ app.post("/SignUpEmail",async (req, res) => {
 });
 
 
+=======
+//ROUTES
+app.use("/auth", authRouter);
+>>>>>>> e4e2f1c00c5f8414c8a1bcd079787594ff784155
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
