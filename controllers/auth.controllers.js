@@ -1,8 +1,5 @@
 import { generateAccessToken, generateRefreshToken } from "../utils/token";
-//import prisma from "/lib/prisma.ts";
 import argon2 from "argon2";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
 import prisma from "../lib/prisma.js";
 import { generateOTP } from "../utils/otp.js";
 
