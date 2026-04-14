@@ -203,7 +203,7 @@ const authController = {
         });
         console.log("Password Reset Successfully!");
         return res
-          .status(200)
+          .status(201)
           .json({ message: "Password Reset successfully" });
       } else {
         console.log("Invalid or expired OTP");
