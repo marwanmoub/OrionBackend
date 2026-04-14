@@ -3,8 +3,6 @@ import dotenv from "dotenv";
 import prisma from "../lib/prisma.js";
 dotenv.config();
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -13,7 +11,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function generateOTP(req, res) {
+export async function generateOTP(email) {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   const htmlContent = `
@@ -28,16 +26,14 @@ export async function generateOTP(req, res) {
     `;
 
   try {
-    const { email } = req.body;
-
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"Orion System" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Orion: Your Verification Code",
       html: htmlContent,
     });
 
-    let user = await prisma.user.update({
+    await prisma.user.update({
       where: {
         email: email,
       },
@@ -46,14 +42,7 @@ export async function generateOTP(req, res) {
         email_token_expires_at: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    console.log("OTP sent successfully!");
-    console.log("Message ID:", info.messageId);
-    return res.status(200).json({ message: "OTP sent successfully" });
   } catch (err) {
     console.error("Failed to send email:", err);
-    return res.status(500).json({ error: "Failed to send OTP" });
   }
 }

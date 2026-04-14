@@ -84,6 +84,8 @@ const authController = {
         });
       }
 
+      generateOTP(userProperties.email);
+
       return res.status(201).json({
         message: "User created successfully",
         user: {
@@ -93,8 +95,6 @@ const authController = {
           phone: createUser.phone,
         },
       });
-
-      generateOTP();
     } catch (err) {
       if (err.code === "P2002") {
         return res
