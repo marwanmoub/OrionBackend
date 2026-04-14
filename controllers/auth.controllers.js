@@ -103,6 +103,27 @@ const authController = {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   },
+  logout: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      console.log(userId);
+
+      const userUpdate = await prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          refreshToken: null,
+        },
+      });
+
+      console.log(userUpdate);
+
+      return res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  },
   OTP: {
     checkOTP: async (req, res) => {
       const { email, otp } = req.body;
