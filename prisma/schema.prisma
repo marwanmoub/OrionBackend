@@ -1,10 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
@@ -13,29 +8,22 @@ datasource db {
 }
 
 model User {
-  id                        String       @id @default(uuid())
-  password                  String
-  email                     String    @unique
-  fullName                  String?
-  
-  // Verification & Security
-  refreshToken              String?   @unique
-  is_email_verified         Boolean   @default(false)
-  email_verification_token  String?
-  email_token_expires_at    DateTime?
-  phone_verified            Boolean   @default(false)
-  phone_verification_code   String?
-  phone_code_expires_at     DateTime?
-  
-  // 2FA Fields
-  is_2fa_enabled            Boolean   @default(false)
-  two_fa_method             String?
-  two_fa_secret             String?
-  two_fa_backup_codes       String?
-  
-  // Account Management
-  last_username_changed     DateTime?
-  deletion_requested_at     DateTime?
-  
-  createdAt                 DateTime  @default(now())
+  id                       String    @id @default(uuid())
+  password                 String
+  email                    String    @unique
+  fullName                 String?
+  is_email_verified        Boolean   @default(false)
+  email_verification_token String?
+  email_token_expires_at   DateTime?
+  phone_verified           Boolean   @default(false)
+  phone_verification_code  String?
+  phone_code_expires_at    DateTime?
+  is_2fa_enabled           Boolean   @default(false)
+  two_fa_method            String?
+  two_fa_secret            String?
+  two_fa_backup_codes      String?
+  last_username_changed    DateTime?
+  deletion_requested_at    DateTime?
+  createdAt                DateTime  @default(now())
+  refreshToken             String?   @unique
 }
