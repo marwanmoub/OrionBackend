@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import jwt from "jsonwebtoken";
+
 import prisma from '../lib/prisma.js';
 dotenv.config();
 
@@ -33,6 +34,11 @@ const OTP = {
     `;
 
     try {
+      const {token}= req.body;
+
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    const userId = decoded.id; 
       // 2. Await the sendMail (Note: Nodemailer uses sendMail, not sendEmail)
       const info = await transporter.sendMail({
         from: `"Orion System" <${process.env.EMAIL_USER}>`,
@@ -41,10 +47,25 @@ const OTP = {
         html: htmlContent, // This explicitly tells the client to render HTML
       });
 
+      let user = prisma.users.update({
+                where: {
+                  id: userId,
+                },
+                data: {
+                  email_verification_token: otp,
+                  email_token_expires_at : new Date(Date.now() + 15 * 60 * 1000) 
+                },
+              });
+      if(!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      email_verification_token
       console.log("OTP sent successfully!");
       console.log("Message ID:", info.messageId);
+      return res.status(200).json({ message: "OTP sent successfully" });
     } catch (err) {
       console.error("Failed to send email:", err);
+      return res.status(500).json({ error: "Failed to send OTP" });
     }
   },
 };
