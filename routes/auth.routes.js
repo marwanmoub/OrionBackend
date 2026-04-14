@@ -13,16 +13,17 @@ authRouter.post("/pass-reset", authController.forgotPassword);
 authRouter.post("/verify-email", authController.OTP.checkOTP);
 authRouter.post("/resend-otp", async (req, res) => {
   const response = await generateOTP(req.body?.email);
-  if(response.status === true) {
-    res.status(201).json({
+
+  if (response.status === true) {
+    return res.status(201).json({
       message: "OTP sent successfully",
-      status: true
+      status: true,
     });
   } else {
-    res.status(400).json({
+    return res.status(400).json({
       message: "Failed to send OTP",
       status: false,
-      error: response.error
+      error: response.error,
     });
   }
 });

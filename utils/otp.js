@@ -33,7 +33,7 @@ export async function generateOTP(email) {
       html: htmlContent,
     });
 
-    await prisma.user.update({
+    const updateUser = await prisma.user.update({
       where: {
         email: email,
       },
@@ -41,17 +41,19 @@ export async function generateOTP(email) {
         email_verification_token: otp,
         email_token_expires_at: new Date(Date.now() + 10 * 60 * 1000),
       },
-    }).then(() => {
-      return {
-        status: true
-      }
-    }).catch((err) => {
-      return {
-        status: false,
-        error: err
-      }
     });
+
+    console.log(updateUser);
+
+    if (updateUser) {
+      return {
+        status: true,
+      };
+    } else {
+      status: false;
+    }
   } catch (err) {
     console.error("Failed to send email:", err);
+    return { status: false, error: err.message };
   }
 }
