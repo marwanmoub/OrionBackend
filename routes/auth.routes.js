@@ -14,7 +14,7 @@ authRouter.post("/verify-email", authController.OTP.checkOTP);
 authRouter.post("/resend-otp", async (req, res) => {
   const response = await generateOTP(req.body?.email);
   if(response.status === true) {
-    res.status(200).json({
+    res.status(201).json({
       message: "OTP sent successfully",
       status: true
     });
