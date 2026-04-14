@@ -1,7 +1,5 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import jwt from "jsonwebtoken";
-
 import prisma from '../lib/prisma.js';
 dotenv.config();
 
@@ -17,8 +15,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const OTP = {
-  generateOTP: async (req, res) => {
+
+ export async function generateOTP (req, res) {
     // Logic for generating a simple 6-digit code
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -65,40 +63,5 @@ const OTP = {
       console.error("Failed to send email:", err);
       return res.status(500).json({ error: "Failed to send OTP" });
     }
-  },
-  checkOTP: async (req, res) => {
-        const { email , otp } = req.body;
-    
-        try {
-    
-        const user = await prisma.users.findUnique({
-            where: { email: email },
-        });
-    
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-    
-        if (user.email_verification_token === otp && user.email_token_expires_at > new Date(Date.now())) {
-            await prisma.users.update({
-            where: { email: u },
-            data: {
-                is_email_verified: true,
-                email_verification_token: null,
-                email_token_expires_at: null,
-            },
-            });
-            console.log("Email verified successfully!");
-            return res.status(200).json({ message: "Email verified successfully" });
-        } else {
-            console.log("Invalid or expired OTP");
-            return res.status(400).json({ error: "Invalid or expired OTP" });
-        }
-        } catch (err) {
-        console.error("Error verifying OTP:", err);
-        return res.status(500).json({ error: "Failed to verify OTP" });
-        }
   }
-};
 
-OTP.generateOTP();
