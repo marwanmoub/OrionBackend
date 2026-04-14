@@ -1,22 +1,10 @@
 import { generateAccessToken, generateRefreshToken } from "../utils/token";
 //import prisma from "/lib/prisma.ts";
 import argon2 from "argon2";
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-import prisma from '../lib/prisma.js';
-dotenv.config();
-
-// Standard Node fix for self-signed certificate issues in dev
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-// 1. Create the Transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import prisma from "../lib/prisma.js";
+import { generateOTP } from "../utils/otp.js";
 
 const authController = {
   login: async (req, res) => {
@@ -105,6 +93,8 @@ const authController = {
           phone: createUser.phone,
         },
       });
+
+      generateOTP();
     } catch (err) {
       if (err.code === "P2002") {
         return res
@@ -116,42 +106,45 @@ const authController = {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   },
-  OTP : {
+  OTP: {
     checkOTP: async (req, res) => {
-          const { email , otp } = req.body;
-      
-          try {
-      
-          const user = await prisma.user.findUnique({
-              where: { email: email },
+      const { email, otp } = req.body;
+
+      try {
+        const user = await prisma.user.findUnique({
+          where: { email: email },
+        });
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        if (
+          user.email_verification_token === otp &&
+          user.email_token_expires_at > new Date(Date.now())
+        ) {
+          await prisma.user.update({
+            where: { email: email },
+            data: {
+              is_email_verified: true,
+              email_verification_token: null,
+              email_token_expires_at: null,
+            },
           });
-      
-          if (!user) {
-              return res.status(404).json({ error: "User not found" });
-          }
-      
-          if (user.email_verification_token === otp && user.email_token_expires_at > new Date(Date.now())) {
-              await prisma.user.update({
-              where: { email: email },
-              data: {
-                  is_email_verified: true,
-                  email_verification_token: null,
-                  email_token_expires_at: null,
-              },
-              });
-              console.log("Email verified successfully!");
-              return res.status(200).json({ message: "Email verified successfully" });
-          } else {
-              console.log("Invalid or expired OTP");
-              return res.status(400).json({ error: "Invalid or expired OTP" });
-          }
-          } catch (err) {
-          console.error("Error verifying OTP:", err);
-          return res.status(500).json({ error: "Failed to verify OTP" });
-          }
+          console.log("Email verified successfully!");
+          return res
+            .status(200)
+            .json({ message: "Email verified successfully" });
+        } else {
+          console.log("Invalid or expired OTP");
+          return res.status(400).json({ error: "Invalid or expired OTP" });
+        }
+      } catch (err) {
+        console.error("Error verifying OTP:", err);
+        return res.status(500).json({ error: "Failed to verify OTP" });
+      }
     },
-    
-  }
+  },
 };
 
 export default authController;
