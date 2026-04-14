@@ -25,7 +25,7 @@ const authController = {
 
       let user;
       if (email) {
-        user = prisma.users.findUnique({
+        user = prisma.user.findUnique({
           where: {
             email: email,
           },
@@ -33,7 +33,7 @@ const authController = {
       }
 
       if (phone) {
-        user = prisma.users.findUnique({
+        user = prisma.user.findUnique({
           where: {
             phone: phone,
           },
@@ -123,7 +123,7 @@ const authController = {
       
           try {
       
-          const user = await prisma.users.findUnique({
+          const user = await prisma.user.findUnique({
               where: { email: email },
           });
       
@@ -132,8 +132,8 @@ const authController = {
           }
       
           if (user.email_verification_token === otp && user.email_token_expires_at > new Date(Date.now())) {
-              await prisma.users.update({
-              where: { email: u },
+              await prisma.user.update({
+              where: { email: email },
               data: {
                   is_email_verified: true,
                   email_verification_token: null,

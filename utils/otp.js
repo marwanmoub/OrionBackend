@@ -43,7 +43,7 @@ const transporter = nodemailer.createTransport({
         html: htmlContent, // This explicitly tells the client to render HTML
       });
 
-      let user = prisma.users.update({
+      let user = prisma.user.update({
                 where: {
                   email : email
                 },
