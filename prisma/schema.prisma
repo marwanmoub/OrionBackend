@@ -8,22 +8,207 @@ datasource db {
 }
 
 model User {
-  id                       String    @id @default(uuid())
+  id                       String   @id @default(uuid())
+  email                    String   @unique
   password                 String
-  email                    String    @unique
   fullName                 String?
-  is_email_verified        Boolean   @default(false)
+  username                 String?  @unique
+  phone                    String?
+
+  is_email_verified        Boolean  @default(false)
   email_verification_token String?
   email_token_expires_at   DateTime?
-  phone_verified           Boolean   @default(false)
+
+  phone_verified           Boolean  @default(false)
   phone_verification_code  String?
   phone_code_expires_at    DateTime?
-  is_2fa_enabled           Boolean   @default(false)
+
+  is_2fa_enabled           Boolean  @default(false)
   two_fa_method            String?
   two_fa_secret            String?
   two_fa_backup_codes      String?
+
   last_username_changed    DateTime?
   deletion_requested_at    DateTime?
-  createdAt                DateTime  @default(now())
-  refreshToken             String?   @unique
+
+  refreshToken             String?  @unique
+
+  createdAt                DateTime @default(now())
+
+  // Relations
+  settings      UserSettings?
+  chats         ChatParticipant[]
+  messages      Message[]
+  flights       UserFlight[]
+  notifications Notification[]
+}
+
+model UserSettings {
+  id                                   String @id @default(uuid())
+  userId                               String @unique
+
+  always_use_default_airport           Boolean @default(false)
+  delete_old_chats_automatically       Boolean @default(false)
+  change_user_state_automatically      Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Airport {
+  id            String  @id @default(uuid())
+  iata_code     String  @unique
+  name          String
+  city          String
+  geo_json_data Json?
+  is_default    Boolean @default(false)
+
+  departures Flight[] @relation("DepartureAirport")
+  arrivals   Flight[] @relation("ArrivalAirport")
+  guides     Guide[]
+}
+
+model Flight {
+  id                        String   @id @default(uuid())
+  flight_number             String
+
+  departure_airport_id      String
+  arrival_airport_id        String
+
+  scheduled_departure_time  DateTime
+  expected_departure_time   DateTime?
+
+  gate                      String?
+  terminal                  String?
+  status                    String
+  passcode                  String?
+  is_cancelled              Boolean  @default(false)
+
+  // Relations
+  departureAirport Airport @relation("DepartureAirport", fields: [departure_airport_id], references: [id])
+  arrivalAirport   Airport @relation("ArrivalAirport", fields: [arrival_airport_id], references: [id])
+
+  userFlights UserFlight[]
+  guides      Guide[]
+}
+
+model UserFlight {
+  id        String @id @default(uuid())
+  userId    String
+  flightId  String
+
+  user   User   @relation(fields: [userId], references: [id])
+  flight Flight @relation(fields: [flightId], references: [id])
+
+  guides Guide[]
+}
+
+model Guide {
+  id                       String   @id @default(uuid())
+  flightId                 String
+  userFlightId             String
+  guide_generation_time    DateTime
+
+  departure_from_home_time DateTime?
+  used_airport_id          String?
+  guide_pdf_path           String?
+
+  flight     Flight     @relation(fields: [flightId], references: [id])
+  userFlight UserFlight @relation(fields: [userFlightId], references: [id])
+  airport    Airport?   @relation(fields: [used_airport_id], references: [id])
+
+  checklistItems CheckListItem[]
+}
+
+model CheckListTemplate {
+  id                       String  @id @default(uuid())
+  taskName                 String
+  default_due_offset_hours Int
+  is_mandatory             Boolean @default(false)
+  item_type                String
+
+  checklistItems CheckListItem[]
+}
+
+model CheckListItem {
+  id           String   @id @default(uuid())
+  guideId      String
+  templateId   String?
+
+  due_time     DateTime
+  is_completed Boolean  @default(false)
+  alert_sent   Boolean  @default(false)
+
+  guide    Guide             @relation(fields: [guideId], references: [id])
+  template CheckListTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model Location {
+  id                     String @id @default(uuid())
+  name                   String
+  geofence_boundary      Json
+  state_to_change_to     String
+}
+
+model StaticQuestions {
+  id            String @id @default(uuid())
+  category      String
+  question_text String
+  answer_text   String
+}
+
+model Notification {
+  id             String   @id @default(uuid())
+  userId         String
+
+  type           String
+  title          String
+  message        String
+  voiceScript    String?
+  deepLinkAction String?
+
+  sentAt         DateTime
+  createdAt      DateTime @default(now())
+  status         String
+  readAt         DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Chat {
+  id               String   @id @default(uuid())
+  type             String
+  name             String?
+
+  createdAt        DateTime @default(now())
+  last_activity_at DateTime?
+
+  participants ChatParticipant[]
+  messages     Message[]
+}
+
+model ChatParticipant {
+  id     String @id @default(uuid())
+  chatId String
+  userId String
+
+  isOwner Boolean @default(false)
+
+  chat Chat @relation(fields: [chatId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  chatId       String
+  senderId     String?
+
+  sender_type  String
+  message_text String
+  sentAt       DateTime @default(now())
+  is_edited    Boolean  @default(false)
+
+  chat   Chat  @relation(fields: [chatId], references: [id])
+  sender User? @relation(fields: [senderId], references: [id])
 }

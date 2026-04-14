@@ -9,15 +9,13 @@ const authController = {
 
       let user;
       if (email) {
-        user = prisma.user.findUnique({
+        user = await prisma.user.findUnique({
           where: {
             email: email,
           },
         });
-      }
-
-      if (phone) {
-        user = prisma.user.findUnique({
+      } else if (phone) {
+        user = await prisma.user.findUnique({
           where: {
             phone: phone,
           },
@@ -28,12 +26,12 @@ const authController = {
         return res.status(400).send("User not found");
       }
 
-      const isValid = await argon2.verify(userFromDB.password, password);
+      const isValid = await argon2.verify(user.password, password);
 
-      if (!isValid) return res.status(401).json({ error: "Wrong Password" });
+      if (!isValid) return res.status(400).json({ error: "Wrong Password" });
 
-      const accessToken = generateAccessToken();
-      const refreshToken = generateRefreshToken();
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
 
       await prisma.user.update({
         where: { id: user.id },
@@ -46,6 +44,7 @@ const authController = {
         message: "Login successful",
         accessToken: accessToken,
         refreshToken,
+        fullName: user.fullName,
       });
     } catch (err) {
       console.error(err);
