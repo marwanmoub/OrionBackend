@@ -41,6 +41,15 @@ export async function generateOTP(email) {
         email_verification_token: otp,
         email_token_expires_at: new Date(Date.now() + 10 * 60 * 1000),
       },
+    }).then(() => {
+      return {
+        status: true
+      }
+    }).catch((err) => {
+      return {
+        status: false,
+        error: err
+      }
     });
   } catch (err) {
     console.error("Failed to send email:", err);

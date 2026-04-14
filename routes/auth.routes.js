@@ -11,8 +11,20 @@ authRouter.get("/logout", verifyToken, authController.logout);
 authRouter.post("/pass-reset", authController.forgotPassword);
 //OTP Related
 authRouter.post("/verify-email", authController.OTP.checkOTP);
-authRouter.post("/resend-otp", (req, res) => {
-  generateOTP(req.body?.email);
+authRouter.post("/resend-otp", async (req, res) => {
+  const response = await generateOTP(req.body?.email);
+  if(response.status === true) {
+    res.status(200).json({
+      message: "OTP sent successfully",
+      status: true
+    });
+  } else {
+    res.status(400).json({
+      message: "Failed to send OTP",
+      status: false,
+      error: response.error
+    });
+  }
 });
 
 export default authRouter;
