@@ -34,26 +34,24 @@ const OTP = {
     `;
 
     try {
-      const {token}= req.body;
+      const {email}= req.body;
 
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    const userId = decoded.id; 
       // 2. Await the sendMail (Note: Nodemailer uses sendMail, not sendEmail)
       const info = await transporter.sendMail({
         from: `"Orion System" <${process.env.EMAIL_USER}>`,
-        to: "moubayedmarwancoding@gmail.com",
+        to: email,
         subject: "Orion: Your Verification Code",
         html: htmlContent, // This explicitly tells the client to render HTML
       });
 
       let user = prisma.users.update({
                 where: {
-                  id: userId,
+                  email : email
                 },
                 data: {
                   email_verification_token: otp,
-                  email_token_expires_at : new Date(Date.now() + 15 * 60 * 1000) 
+                  email_token_expires_at : new Date(Date.now() + 10 * 60 * 1000) 
                 },
               });
       if(!user) {
@@ -68,6 +66,39 @@ const OTP = {
       return res.status(500).json({ error: "Failed to send OTP" });
     }
   },
+  checkOTP: async (req, res) => {
+        const { email , otp } = req.body;
+    
+        try {
+    
+        const user = await prisma.users.findUnique({
+            where: { email: email },
+        });
+    
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+    
+        if (user.email_verification_token === otp && user.email_token_expires_at > new Date(Date.now())) {
+            await prisma.users.update({
+            where: { email: u },
+            data: {
+                is_email_verified: true,
+                email_verification_token: null,
+                email_token_expires_at: null,
+            },
+            });
+            console.log("Email verified successfully!");
+            return res.status(200).json({ message: "Email verified successfully" });
+        } else {
+            console.log("Invalid or expired OTP");
+            return res.status(400).json({ error: "Invalid or expired OTP" });
+        }
+        } catch (err) {
+        console.error("Error verifying OTP:", err);
+        return res.status(500).json({ error: "Failed to verify OTP" });
+        }
+  }
 };
 
 OTP.generateOTP();
