@@ -6,6 +6,7 @@ import { generateOTP } from "../utils/otp.js";
 const authController = {
   login: async (req, res) => {
     try {
+      console.log("hi");
       let { email, phone, password } = req.body;
 
       let user;
@@ -15,6 +16,8 @@ const authController = {
             email: email,
           },
         });
+
+        console.log("hellooo");
       } else if (phone) {
         user = await prisma.user.findUnique({
           where: {
@@ -29,7 +32,8 @@ const authController = {
 
       const isValid = await argon2.verify(user.password, password);
 
-      if (!isValid) return res.status(400).json({ error: "Wrong Password" });
+      if (!isValid) return res.status(400).json({ message: "Wrong Password" });
+      console.log("hello");
 
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
@@ -46,6 +50,9 @@ const authController = {
         accessToken: accessToken,
         refreshToken,
         fullName: user.fullName,
+        email: user.email,
+        is_email_verified: user.is_email_verified,
+        is_2fa_enabled: user.is_2fa_enabled,
       });
     } catch (err) {
       console.error(err);
@@ -165,19 +172,20 @@ const authController = {
   },
   // this function exists if you need it
   forgotPasswordRequest: async (req, res) => {
-    try{
-    let {email} = req.body;
-    generateOTP(email);
-    console.log("Received forgot password request for email:", email);
-    return res.status(200).json({ message: "Password Reset Request Sent successfully" });
-    
-    }catch(err){
-        console.error(err);
-        return res.status(500).json({ error: "Failed to generate OTP" });
+    try {
+      let { email } = req.body;
+      generateOTP(email);
+      console.log("Received forgot password request for email:", email);
+      return res
+        .status(200)
+        .json({ message: "Password Reset Request Sent successfully" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Failed to generate OTP" });
     }
   },
   forgotPassword: async (req, res) => {
-    const { email,password, otp } = req.body;
+    const { email, password, otp } = req.body;
 
     try {
       const user = await prisma.user.findUnique({
@@ -196,15 +204,13 @@ const authController = {
         await prisma.user.update({
           where: { email: email },
           data: {
-            password:newHashedPassword,
+            password: newHashedPassword,
             email_verification_token: null,
             email_token_expires_at: null,
           },
         });
         console.log("Password Reset Successfully!");
-        return res
-          .status(201)
-          .json({ message: "Password Reset successfully" });
+        return res.status(201).json({ message: "Password Reset successfully" });
       } else {
         console.log("Invalid or expired OTP");
         return res.status(400).json({ error: "Invalid or expired OTP" });

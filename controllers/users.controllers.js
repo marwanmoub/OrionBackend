@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma.js";
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 
 const userController = {
   getUser: async (req, res) => {
@@ -83,7 +83,7 @@ const userController = {
 
   changeName: async (req, res) => {
     try {
-      const { id } = req.user; // injected by verifyToken middleware
+      const { id } = req.user;
       const { fullName } = req.body;
 
       if (!fullName || fullName.trim() === "") {
@@ -93,7 +93,6 @@ const userController = {
         });
       }
 
-      // Enforce a cooldown period of 30 days between name changes
       const user = await prisma.user.findUnique({
         where: { id },
         select: { last_username_changed: true },
@@ -148,14 +147,13 @@ const userController = {
 
   changePassword: async (req, res) => {
     try {
-      const { id } = req.user; // injected by verifyToken middleware
+      const { id } = req.user;
       const { currentPassword, newPassword, confirmPassword } = req.body;
 
       if (!currentPassword || !newPassword || !confirmPassword) {
         return res.status(400).json({
           status: false,
-          message:
-            "currentPassword, newPassword, and confirmPassword are required",
+          message: "All password fields are required",
         });
       }
 
@@ -185,9 +183,10 @@ const userController = {
         });
       }
 
-      const isPasswordValid = await bcrypt.compare(
-        currentPassword,
+      // Argon2 verification: (hash, plainText)
+      const isPasswordValid = await argon2.verify(
         user.password,
+        currentPassword,
       );
       if (!isPasswordValid) {
         return res.status(401).json({
@@ -196,7 +195,7 @@ const userController = {
         });
       }
 
-      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      const isSamePassword = await argon2.verify(user.password, newPassword);
       if (isSamePassword) {
         return res.status(400).json({
           status: false,
@@ -204,13 +203,13 @@ const userController = {
         });
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = await argon2.hash(newPassword);
 
       await prisma.user.update({
         where: { id },
         data: {
           password: hashedPassword,
-          refreshToken: null, // invalidate existing sessions
+          refreshToken: null,
         },
       });
 
