@@ -8,39 +8,57 @@ const chatController = {
       const limit = parseInt(req.query.limit) || 20;
       const skip = (page - 1) * limit;
 
-      const [chats, total] = await prisma.$transaction([
-        prisma.chat.findMany({
-          where: {
-            participants: {
-              some: { userId },
-            },
+      //   const [chats, total] = await prisma.$transaction([
+      //     prisma.chat.findMany({
+      //       where: {
+      //         participants: {
+      //           some: { userId },
+      //         },
+      //       },
+      //       orderBy: {
+      //         last_activity_at: "desc",
+      //       },
+      //       skip,
+      //       take: limit,
+      //       select: {
+      //         id: true,
+      //         name: true,
+      //         last_activity_at: true,
+      //         createdAt: true,
+      //       },
+      //     }),
+      //     prisma.chat.count({
+      //       where: {
+      //         participants: {
+      //           some: { userId },
+      //         },
+      //       },
+      //     }),
+      //   ]);
+
+      const chats = await prisma.chat.findMany({
+        where: {
+          participants: {
+            some: { userId },
           },
-          orderBy: {
-            last_activity_at: "desc",
-          },
-          skip,
-          take: limit,
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            last_activity_at: true,
-            createdAt: true,
-          },
-        }),
-        prisma.chat.count({
-          where: {
-            participants: {
-              some: { userId },
-            },
-          },
-        }),
-      ]);
+        },
+        orderBy: {
+          last_activity_at: "desc",
+        },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          last_activity_at: true,
+          createdAt: true,
+        },
+      });
 
       return res.status(200).json({
         data: chats,
         meta: {
-          total,
+          //   total,
           page,
           limit,
           totalPages: Math.ceil(total / limit),
@@ -68,15 +86,18 @@ const chatController = {
             },
           },
         },
-        select: {
-          id: true,
-          type: true,
-          name: true,
-          createdAt: true,
-        },
+        // select: {
+        //   id: true,
+        //   type: true,
+        //   name: true,
+        //   createdAt: true,
+        // },
       });
 
-      return res.status(201).json(newChat);
+      return res.status(201).json({
+        message: "Created Chat",
+        status: true,
+      });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -96,7 +117,7 @@ const chatController = {
       if (!participant || !participant.isOwner) {
         return res
           .status(403)
-          .json({ error: "Unauthorized to delete this chat" });
+          .json({ message: "Unauthorized to delete this chat", status: false });
       }
 
       await prisma.$transaction([
@@ -105,7 +126,10 @@ const chatController = {
         prisma.chat.delete({ where: { id: chatId } }),
       ]);
 
-      return res.status(204).send();
+      return res.status(204).json({
+        message: "Error deleting chat",
+        status: false,
+      });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
