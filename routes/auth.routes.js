@@ -4,9 +4,12 @@ import { generateOTP } from "../utils/otp.js";
 import verifyToken from "../middlewares/auth.js";
 const authRouter = express.Router();
 
+//TOKENS
+authRouter.get("/refresh-token", authController.refreshToken);
+
 authRouter.post("/login", authController.login);
 authRouter.post("/signUp", authController.signUp);
-authRouter.get("/logout", verifyToken, authController.logout);
+authRouter.get("/logout/:userId", authController.logout);
 
 authRouter.post("/pass-reset", authController.forgotPassword);
 //OTP Related

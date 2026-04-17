@@ -188,8 +188,9 @@ const userController = {
         user.password,
         currentPassword,
       );
+
       if (!isPasswordValid) {
-        return res.status(401).json({
+        return res.status(403).json({
           status: false,
           message: "Current password is incorrect",
         });

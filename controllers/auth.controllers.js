@@ -2,6 +2,7 @@ import { generateAccessToken, generateRefreshToken } from "../utils/token";
 import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import { generateOTP } from "../utils/otp.js";
+import jwt from "jsonwebtoken";
 
 const authController = {
   login: async (req, res) => {
@@ -53,6 +54,7 @@ const authController = {
         email: user.email,
         is_email_verified: user.is_email_verified,
         is_2fa_enabled: user.is_2fa_enabled,
+        userId: user.id,
       });
     } catch (err) {
       console.error(err);
@@ -112,8 +114,7 @@ const authController = {
   },
   logout: async (req, res) => {
     try {
-      console.log("hi");
-      const userId = req.user.id;
+      const { userId } = req.params;
       console.log(userId);
 
       const userUpdate = await prisma.user.update({
@@ -125,9 +126,12 @@ const authController = {
         },
       });
 
-      console.log(userUpdate);
-
-      return res.status(200).json({ message: "Logged out successfully" });
+      if (userUpdate) {
+        console.log("whats up");
+        return res.status(200).json({ message: "Logged out successfully" });
+      } else {
+        return res.status(400).json({ message: "Could not log out user" });
+      }
     } catch (error) {
       return res.status(500).json({ message: "Internal server error" });
     }
@@ -219,6 +223,27 @@ const authController = {
     } catch (err) {
       console.error("Error verifying OTP:", err);
       return res.status(500).json({ error: "Failed to verify OTP" });
+    }
+  },
+  refreshToken: async (req, res) => {
+    const { refresh_token } = req.body;
+    if (!refresh_token)
+      return res.status(401).json({ message: "Refresh Token required" });
+
+    const decoded = jwt.verify(refresh_token, process.env.REFRESH_TOKEN_SECRET);
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+
+    if (!user || user.refreshToken !== token) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    const newAccessToken = generateAccessToken(user.id);
+
+    res.status(200).json({ accessToken: newAccessToken });
+    try {
+    } catch (err) {
+      return res.status(403).json({ message: "Token expired or invalid" });
     }
   },
 };
