@@ -4,11 +4,11 @@ const chatController = {
   getAllChats: async (req, res) => {
     try {
       const userId = req.user.id;
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 20;
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.max(1, parseInt(req.query.limit) || 15);
       const skip = (page - 1) * limit;
 
-      const [chats, total] = await prisma.$transaction([
+      const [chats, totalCount] = await prisma.$transaction([
         prisma.chat.findMany({
           where: {
             participants: {
@@ -23,6 +23,7 @@ const chatController = {
           select: {
             id: true,
             name: true,
+            type: true,
             last_activity_at: true,
             createdAt: true,
           },
@@ -37,16 +38,17 @@ const chatController = {
       ]);
 
       return res.status(200).json({
+        status: true,
         data: chats,
-        meta: {
-          total,
+        pagination: {
+          total: totalCount,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(totalCount / limit),
         },
       });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ status: false, error: error.message });
     }
   },
 
@@ -55,7 +57,7 @@ const chatController = {
       const { name } = req.body;
       const userId = req.user.id;
 
-      await prisma.chat.create({
+      const newChat = await prisma.chat.create({
         data: {
           type: "nova",
           name: name || "New Chat",
@@ -70,44 +72,65 @@ const chatController = {
       });
 
       return res.status(201).json({
-        message: "Created Chat",
         status: true,
+        message: "Created Chat",
+        data: newChat,
       });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ status: false, error: error.message });
     }
   },
 
   sendMessage: async (req, res) => {
     try {
-      const { chatId, message_text, sender_type } = req.body;
+      const { message_text } = req.body;
       const userId = req.user.id;
+      const { chatId } = req.params;
 
-      const message = await prisma.$transaction(async (tx) => {
-        const newMessage = await tx.message.create({
+      const history = await prisma.message.findMany({
+        where: { chatId },
+        take: 20,
+        orderBy: { sentAt: "asc" },
+      });
+
+      const novaResult = await getNovaResponse(message_text, history);
+
+      const [userMsg, aiMsg] = await prisma.$transaction([
+        prisma.message.create({
           data: {
             chatId,
-            senderId: sender_type === "user" ? userId : null,
-            sender_type,
+            senderId: userId,
+            sender_type: "user",
             message_text,
             sentAt: new Date(),
           },
-        });
-
-        await tx.chat.update({
+        }),
+        prisma.message.create({
+          data: {
+            chatId,
+            senderId: null,
+            sender_type: "bot",
+            message_text: novaResult.message,
+            sentAt: new Date(),
+          },
+        }),
+        prisma.chat.update({
           where: { id: chatId },
-          data: { last_activity_at: new Date() },
-        });
-
-        return newMessage;
-      });
+          data: {
+            last_activity_at: new Date(),
+            ...(novaResult.title && { name: novaResult.title }),
+          },
+        }),
+      ]);
 
       return res.status(201).json({
-        data: message,
         status: true,
+        data: aiMsg,
+        newTitle: novaResult.title || null,
       });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("SendMessage Error:", error);
+      return res.status(500).json({ status: false, error: error.message });
     }
   },
 
@@ -123,9 +146,10 @@ const chatController = {
       });
 
       if (!participant || !participant.isOwner) {
-        return res
-          .status(403)
-          .json({ message: "Unauthorized to delete this chat", status: false });
+        return res.status(403).json({
+          status: false,
+          message: "Unauthorized to delete this chat",
+        });
       }
 
       await prisma.$transaction([
@@ -136,7 +160,7 @@ const chatController = {
 
       return res.status(204).send();
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ status: false, error: error.message });
     }
   },
 };

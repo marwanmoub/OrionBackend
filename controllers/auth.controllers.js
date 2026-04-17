@@ -112,6 +112,7 @@ const authController = {
   },
   logout: async (req, res) => {
     try {
+      console.log("hi");
       const userId = req.user.id;
       console.log(userId);
 
