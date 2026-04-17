@@ -230,20 +230,21 @@ const authController = {
     if (!refresh_token)
       return res.status(401).json({ message: "Refresh Token required" });
 
-    const decoded = jwt.verify(refresh_token, process.env.REFRESH_TOKEN_SECRET);
-
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-
-    if (!user || user.refreshToken !== token) {
-      return res.status(403).json({ message: "Invalid refresh token" });
-    }
-
-    const newAccessToken = generateAccessToken(user.id);
-
-    res.status(200).json({ accessToken: newAccessToken });
     try {
+      const decoded = jwt.verify(
+        refresh_token,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
+      const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+
+      if (!user || user.refreshToken !== refresh_token) {
+        return res.status(401).json({ message: "Invalid refresh token" });
+      }
+
+      const newAccessToken = generateAccessToken(user.id);
+      return res.status(200).json({ accessToken: newAccessToken });
     } catch (err) {
-      return res.status(403).json({ message: "Token expired or invalid" });
+      return res.status(401).json({ message: "Token expired or invalid" });
     }
   },
 };

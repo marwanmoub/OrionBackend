@@ -2,6 +2,7 @@ import prisma from "../lib/prisma.js";
 
 const chatController = {
   getAllChats: async (req, res) => {
+    console.log("hi");
     try {
       const userId = req.user.id;
       const page = Math.max(1, parseInt(req.query.page) || 1);
