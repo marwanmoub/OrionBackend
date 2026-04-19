@@ -3,7 +3,7 @@ import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import { generateOTP } from "../utils/otp.js";
 import jwt from "jsonwebtoken";
-
+import sendAccRestoredNotice from "../utils/emailSender.js";
 const authController = {
   login: async (req, res) => {
     try {
@@ -38,14 +38,18 @@ const authController = {
 
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
-
+      let wasSetToBeDeleted= user.deletion_requested_at === null ? false : true;
       await prisma.user.update({
         where: { id: user.id },
         data: {
           refreshToken,
+          deletion_requested_at: null,
         },
       });
-
+      
+      if(wasSetToBeDeleted){
+       await sendAccRestoredNotice(user.email);
+      }
       res.status(201).json({
         message: "Login successful",
         accessToken: accessToken,
@@ -310,15 +314,20 @@ const authController = {
       } 
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
-
+      let wasSetToBeDeleted= user.deletion_requested_at === null ? false : true;
       await prisma.user.update({
         where: { id: user.id },
         data: {
           refreshToken,
           two_factor_auth_token: null,
           two_factor_auth_expires_at: null,
+          deletion_requested_at: null,
         },
       });
+      if(wasSetToBeDeleted){
+       await sendAccRestoredNotice(user.email);
+      }
+      
       console.log("2FA verified successfully!");
       return res.status(201).json({
         message: "Login successful",
