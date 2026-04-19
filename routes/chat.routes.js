@@ -13,6 +13,8 @@ chatRouter.post("/", chatController.createChat);
 
 chatRouter.post("/:chatId/message", chatController.sendMessage);
 
+chatRouter.get("/:chatId/messages", chatController.getChatMessages);
+
 chatRouter.delete("/:chatId", chatController.deleteChat);
 
 export default chatRouter;
