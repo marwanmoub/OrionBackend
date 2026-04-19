@@ -1,8 +1,9 @@
 import prisma from "../lib/prisma.js";
+import { getNovaResponse } from "../utils/nova.js";
 
 const chatController = {
   getAllChats: async (req, res) => {
-    console.log("hi");
+    console.log("hi im getting chats");
     try {
       const userId = req.user.id;
       const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -38,6 +39,8 @@ const chatController = {
         }),
       ]);
 
+      console.log("I GOT THE CHATS!!");
+
       return res.status(200).json({
         status: true,
         data: chats,
@@ -55,6 +58,7 @@ const chatController = {
 
   createChat: async (req, res) => {
     try {
+      console.log("IM HERE");
       const { name } = req.body;
       const userId = req.user.id;
 
@@ -72,27 +76,33 @@ const chatController = {
         },
       });
 
+      console.log("IM HERE NOW");
+
       return res.status(201).json({
         status: true,
         message: "Created Chat",
         data: newChat,
       });
     } catch (error) {
-      return res.status(500).json({ status: false, error: error.message });
+      console.error("PRISMA CREATE ERROR:", error); // ADD THIS LINE
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
 
   sendMessage: async (req, res) => {
     try {
-      const { message_text } = req.body;
+      const { message_text, firstMessage, sentAt } = req.body;
       const userId = req.user.id;
       const { chatId } = req.params;
 
-      const history = await prisma.message.findMany({
-        where: { chatId },
-        take: 20,
-        orderBy: { sentAt: "asc" },
-      });
+      let history = [];
+      if (!firstMessage) {
+        history = await prisma.message.findMany({
+          where: { chatId },
+          take: 20,
+          orderBy: { sentAt: "asc" },
+        });
+      }
 
       const novaResult = await getNovaResponse(message_text, history);
 
@@ -103,7 +113,7 @@ const chatController = {
             senderId: userId,
             sender_type: "user",
             message_text,
-            sentAt: new Date(),
+            sentAt,
           },
         }),
         prisma.message.create({
@@ -112,7 +122,10 @@ const chatController = {
             senderId: null,
             sender_type: "bot",
             message_text: novaResult.message,
-            sentAt: new Date(),
+            sentAt: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           },
         }),
         prisma.chat.update({

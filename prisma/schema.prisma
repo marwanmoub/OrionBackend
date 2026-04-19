@@ -8,31 +8,31 @@ datasource db {
 }
 
 model User {
-  id                       String   @id @default(uuid())
-  email                    String   @unique
-  password                 String
-  fullName                 String?
-  phone                    String?
+  id       String  @id @default(uuid())
+  email    String  @unique
+  password String
+  fullName String?
+  phone    String?
 
-  is_email_verified        Boolean  @default(false)
+  is_email_verified        Boolean   @default(false)
   email_verification_token String?
   email_token_expires_at   DateTime?
 
-  phone_verified           Boolean  @default(false)
-  phone_verification_code  String?
-  phone_code_expires_at    DateTime?
+  phone_verified          Boolean   @default(false)
+  phone_verification_code String?
+  phone_code_expires_at   DateTime?
 
-  is_2fa_enabled           Boolean  @default(false)
-  two_fa_method            String?
-  two_fa_secret            String?
-  two_fa_backup_codes      String?
+  is_2fa_enabled      Boolean @default(false)
+  two_fa_method       String?
+  two_fa_secret       String?
+  two_fa_backup_codes String?
 
-  last_username_changed    DateTime?
-  deletion_requested_at    DateTime?
+  last_username_changed DateTime?
+  deletion_requested_at DateTime?
 
-  refreshToken             String?  @unique
+  refreshToken String? @unique
 
-  createdAt                DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // Relations
   settings      UserSettings?
@@ -43,12 +43,12 @@ model User {
 }
 
 model UserSettings {
-  id                                   String @id @default(uuid())
-  userId                               String @unique
+  id     String @id @default(uuid())
+  userId String @unique
 
-  always_use_default_airport           Boolean @default(false)
-  delete_old_chats_automatically       Boolean @default(false)
-  change_user_state_automatically      Boolean @default(false)
+  always_use_default_airport      Boolean @default(false)
+  delete_old_chats_automatically  Boolean @default(false)
+  change_user_state_automatically Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -67,20 +67,20 @@ model Airport {
 }
 
 model Flight {
-  id                        String   @id @default(uuid())
-  flight_number             String
+  id            String @id @default(uuid())
+  flight_number String
 
-  departure_airport_id      String
-  arrival_airport_id        String
+  departure_airport_id String
+  arrival_airport_id   String
 
-  scheduled_departure_time  DateTime
-  expected_departure_time   DateTime?
+  scheduled_departure_time DateTime
+  expected_departure_time  DateTime?
 
-  gate                      String?
-  terminal                  String?
-  status                    String
-  passcode                  String?
-  is_cancelled              Boolean  @default(false)
+  gate         String?
+  terminal     String?
+  status       String
+  passcode     String?
+  is_cancelled Boolean @default(false)
 
   // Relations
   departureAirport Airport @relation("DepartureAirport", fields: [departure_airport_id], references: [id])
@@ -91,9 +91,9 @@ model Flight {
 }
 
 model UserFlight {
-  id        String @id @default(uuid())
-  userId    String
-  flightId  String
+  id       String @id @default(uuid())
+  userId   String
+  flightId String
 
   user   User   @relation(fields: [userId], references: [id])
   flight Flight @relation(fields: [flightId], references: [id])
@@ -102,10 +102,10 @@ model UserFlight {
 }
 
 model Guide {
-  id                       String   @id @default(uuid())
-  flightId                 String
-  userFlightId             String
-  guide_generation_time    DateTime
+  id                    String   @id @default(uuid())
+  flightId              String
+  userFlightId          String
+  guide_generation_time DateTime
 
   departure_from_home_time DateTime?
   used_airport_id          String?
@@ -129,23 +129,23 @@ model CheckListTemplate {
 }
 
 model CheckListItem {
-  id           String   @id @default(uuid())
-  guideId      String
-  templateId   String?
+  id         String  @id @default(uuid())
+  guideId    String
+  templateId String?
 
   due_time     DateTime
   is_completed Boolean  @default(false)
   alert_sent   Boolean  @default(false)
 
-  guide    Guide             @relation(fields: [guideId], references: [id])
+  guide    Guide              @relation(fields: [guideId], references: [id])
   template CheckListTemplate? @relation(fields: [templateId], references: [id])
 }
 
 model Location {
-  id                     String @id @default(uuid())
-  name                   String
-  geofence_boundary      Json
-  state_to_change_to     String
+  id                 String @id @default(uuid())
+  name               String
+  geofence_boundary  Json
+  state_to_change_to String
 }
 
 model StaticQuestions {
@@ -156,8 +156,8 @@ model StaticQuestions {
 }
 
 model Notification {
-  id             String   @id @default(uuid())
-  userId         String
+  id     String @id @default(uuid())
+  userId String
 
   type           String
   title          String
@@ -165,20 +165,20 @@ model Notification {
   voiceScript    String?
   deepLinkAction String?
 
-  sentAt         DateTime
-  createdAt      DateTime @default(now())
-  status         String
-  readAt         DateTime?
+  sentAt    DateTime
+  createdAt DateTime  @default(now())
+  status    String
+  readAt    DateTime?
 
   user User @relation(fields: [userId], references: [id])
 }
 
 model Chat {
-  id               String   @id @default(uuid())
-  type             String
-  name             String?
+  id   String  @id @default(uuid())
+  type String
+  name String?
 
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
   last_activity_at DateTime?
 
   participants ChatParticipant[]
@@ -199,9 +199,9 @@ model ChatParticipant {
 }
 
 model Message {
-  id           String   @id @default(uuid())
-  chatId       String
-  senderId     String?
+  id       String  @id @default(uuid())
+  chatId   String
+  senderId String?
 
   sender_type  String
   message_text String
