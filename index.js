@@ -2,8 +2,8 @@ import express from "express";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/users.routes.js";
 import chatRouter from "./routes/chat.routes.js";
-import prisma from "../lib/prisma.js";
-import sendAccDeletedFinal from "./utils/emailSender.js";
+import prisma from "./lib/prisma.js";
+import {sendAccDeletedFinal} from "./utils/emailSender.js";
 const app = express();
 const PORT = 3005;
 

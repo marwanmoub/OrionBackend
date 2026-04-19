@@ -3,7 +3,7 @@ import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import { generateOTP } from "../utils/otp.js";
 import jwt from "jsonwebtoken";
-import sendAccRestoredNotice from "../utils/emailSender.js";
+import {sendAccRestoredNotice} from "../utils/emailSender.js";
 const authController = {
   login: async (req, res) => {
     try {

@@ -32,8 +32,6 @@ authRouter.post("/resend-otp", async (req, res) => {
     });
   }
 });
-authRouter.post("/2fa-login", authController.login2FA);
-authRouter.post("/check-2fa-login", authController.check2FA);
 
 
 export default authRouter;
