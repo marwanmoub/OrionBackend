@@ -2,6 +2,7 @@ import prisma from "../lib/prisma.js";
 import argon2 from "argon2";
 import { sendAccDeletionNotice } from "../utils/emailSender.js";
 import { stat } from "fs";
+import { generateOTP } from "../utils/otp.js";
 const userController = {
   getUser: async (req, res) => {
     try {
@@ -248,14 +249,11 @@ const userController = {
         });
       }
 
-      await prisma.user.update({
-        where: { id },
-        data: { is_2fa_enabled: true },
-      });
+       await generateOTP(user.email);
 
-      return res.status(200).json({
+      return res.status(201).json({
         status: true,
-        message: "Two-factor authentication enabled successfully",
+        message: "Two-factor authentication pending OTP",
       });
     } catch (error) {
       return res.status(500).json({
@@ -264,6 +262,131 @@ const userController = {
       });
     }
   },
+  enable2FAConfirm: async (req, res) => {
+    try {
+      const {id} = req.user;
+      const {otp} = req.body;
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: { is_2fa_enabled: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          status: false,
+          message: "User not found",
+        });
+      }
+
+      if (user.is_2fa_enabled) {
+        return res.status(400).json({
+          status: false,
+          message: "Two-factor authentication is already enabled",
+        });
+      }
+      await prisma.user.update({
+        where: { id },
+        data: {
+          is_2fa_enabled: true,
+        },
+      });
+
+       return res.status(201).json({
+        status: true,
+        message: "Two-factor authentication enabled successfully",
+      }); 
+      
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+  },
+  
+
+  disable2FA: async (req, res) => {
+    try {
+      const { id } = req.user;
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: { is_2fa_enabled: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          status: false,
+          message: "User not found",
+        });
+      }
+
+      if (!user.is_2fa_enabled) {
+        return res.status(400).json({
+          status: false,
+          message: "Two-factor authentication is already disabled",
+        });
+      }
+
+       await generateOTP(user.email);
+
+      return res.status(201).json({
+        status: true,
+        message: "Two-factor disable authentication pending OTP",
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+  },
+  disable2FAConfirm: async (req, res) => {
+    try {
+      const {id} = req.user;
+      const {otp} = req.body;
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: { is_2fa_enabled: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          status: false,
+          message: "User not found",
+        });
+      }
+
+      if (!user.is_2fa_enabled) {
+        return res.status(400).json({
+          status: false,
+          message: "Two-factor authentication is already disabled",
+        });
+      }
+      await prisma.user.update({
+        where: { id },
+        data: {
+          is_2fa_enabled: false,
+        },
+      });
+
+       return res.status(201).json({
+        status: true,
+        message: "Two-factor authentication disabled successfully",
+      }); 
+      
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+
+  },
+
+
   deleteAccount: async (req, res) => {
     try {
       const { id } = req.user;

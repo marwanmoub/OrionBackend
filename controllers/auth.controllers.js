@@ -35,7 +35,7 @@ const authController = {
 
       if (!isValid) return res.status(400).json({ message: "Wrong Password" });
       console.log("hello");
-
+      if(!user.is_2fa_enabled){
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
       let wasSetToBeDeleted= user.deletion_requested_at === null ? false : true;
@@ -50,7 +50,7 @@ const authController = {
       if(wasSetToBeDeleted){
        await sendAccRestoredNotice(user.email);
       }
-      res.status(201).json({
+      return res.status(201).json({
         message: "Login successful",
         accessToken: accessToken,
         refreshToken,
@@ -60,6 +60,14 @@ const authController = {
         is_2fa_enabled: user.is_2fa_enabled,
         userId: user.id,
       });
+    } else {
+      let tempToken = generateAccessToken(user.id);
+      generateOTP(user.email);
+      return res.status(201).json({
+        message: "OTP Needed",
+        token: tempToken,
+      });
+    }
     } catch (err) {
       console.error(err);
       res.status(500).send("Internal Server Error");
@@ -251,53 +259,12 @@ const authController = {
       return res.status(401).json({ message: "Token expired or invalid" });
     }
   },
-  login2FA: async (req, res) => {
-    try {
-      console.log("hi");
-      let { email, phone, password } = req.body;
-
-      let user;
-      if (email) {
-        user = await prisma.user.findUnique({
-          where: {
-            email: email,
-          },
-        });
-
-        console.log("hellooo");
-      } else if (phone) {
-        user = await prisma.user.findUnique({
-          where: {
-            phone: phone,
-          },
-        });
-      }
-
-      if (!user) {
-        return res.status(400).send("User not found");
-      }
-
-      const isValid = await argon2.verify(user.password, password);
-
-      if (!isValid) return res.status(400).json({ message: "Wrong Password" });
-      console.log("hello");
-      generateOTP(user.email);
-      return res.status(200).json({
-        message: "OTP sent to email. Please verify to complete login.",
-      });
-
-      
-    } catch (err) {
-      console.error(err);
-      res.status(500).send("Internal Server Error");
-    }
-  },
   check2FA: async (req, res) => {
     try {
-      const { userId, otp } = req.body;
+      const { email, otp } = req.body;
 
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { email: email },
       });
 
       if (!user) {
