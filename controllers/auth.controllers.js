@@ -247,6 +247,96 @@ const authController = {
       return res.status(401).json({ message: "Token expired or invalid" });
     }
   },
+  login2FA: async (req, res) => {
+    try {
+      console.log("hi");
+      let { email, phone, password } = req.body;
+
+      let user;
+      if (email) {
+        user = await prisma.user.findUnique({
+          where: {
+            email: email,
+          },
+        });
+
+        console.log("hellooo");
+      } else if (phone) {
+        user = await prisma.user.findUnique({
+          where: {
+            phone: phone,
+          },
+        });
+      }
+
+      if (!user) {
+        return res.status(400).send("User not found");
+      }
+
+      const isValid = await argon2.verify(user.password, password);
+
+      if (!isValid) return res.status(400).json({ message: "Wrong Password" });
+      console.log("hello");
+      generateOTP(user.email);
+      return res.status(200).json({
+        message: "OTP sent to email. Please verify to complete login.",
+      });
+
+      
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Internal Server Error");
+    }
+  },
+  check2FA: async (req, res) => {
+    try {
+      const { userId, otp } = req.body;
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (
+        user.two_factor_auth_token !== otp ||
+        user.two_factor_auth_expires_at < new Date(Date.now())
+      ) {
+        console.log("Invalid or expired OTP");
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+        
+      } 
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          refreshToken,
+          two_factor_auth_token: null,
+          two_factor_auth_expires_at: null,
+        },
+      });
+      console.log("2FA verified successfully!");
+      return res.status(201).json({
+        message: "Login successful",
+        accessToken: accessToken,
+        refreshToken,
+        fullName: user.fullName,
+        email: user.email,
+        is_email_verified: user.is_email_verified,
+        is_2fa_enabled: user.is_2fa_enabled,
+        userId: user.id,
+      });
+     
+    } catch (err) {
+      console.error("Error verifying 2FA OTP:", err);
+      return res.status(500).json({ error: "Failed to verify 2FA OTP" });
+    }
+  },
+
 };
 
 export default authController;
