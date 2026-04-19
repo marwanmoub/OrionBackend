@@ -3,7 +3,7 @@ import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import { generateOTP } from "../utils/otp.js";
 import jwt from "jsonwebtoken";
-
+import {sendAccRestoredNotice} from "../utils/emailSender.js";
 const authController = {
   login: async (req, res) => {
     try {
@@ -35,18 +35,22 @@ const authController = {
 
       if (!isValid) return res.status(400).json({ message: "Wrong Password" });
       console.log("hello");
-
+      if(!user.is_2fa_enabled){
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
-
+      let wasSetToBeDeleted= user.deletion_requested_at === null ? false : true;
       await prisma.user.update({
         where: { id: user.id },
         data: {
           refreshToken,
+          deletion_requested_at: null,
         },
       });
-
-      res.status(201).json({
+      
+      if(wasSetToBeDeleted){
+       await sendAccRestoredNotice(user.email);
+      }
+      return res.status(201).json({
         message: "Login successful",
         accessToken: accessToken,
         refreshToken,
@@ -56,6 +60,14 @@ const authController = {
         is_2fa_enabled: user.is_2fa_enabled,
         userId: user.id,
       });
+    } else {
+      let tempToken = generateAccessToken(user.id);
+      generateOTP(user.email);
+      return res.status(201).json({
+        message: "OTP Needed",
+        token: tempToken,
+      });
+    }
     } catch (err) {
       console.error(err);
       res.status(500).send("Internal Server Error");
@@ -247,6 +259,60 @@ const authController = {
       return res.status(401).json({ message: "Token expired or invalid" });
     }
   },
+  check2FA: async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+
+      const user = await prisma.user.findUnique({
+        where: { email: email },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (
+        user.two_factor_auth_token !== otp ||
+        user.two_factor_auth_expires_at < new Date(Date.now())
+      ) {
+        console.log("Invalid or expired OTP");
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+        
+      } 
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      let wasSetToBeDeleted= user.deletion_requested_at === null ? false : true;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          refreshToken,
+          two_factor_auth_token: null,
+          two_factor_auth_expires_at: null,
+          deletion_requested_at: null,
+        },
+      });
+      if(wasSetToBeDeleted){
+       await sendAccRestoredNotice(user.email);
+      }
+      
+      console.log("2FA verified successfully!");
+      return res.status(201).json({
+        message: "Login successful",
+        accessToken: accessToken,
+        refreshToken,
+        fullName: user.fullName,
+        email: user.email,
+        is_email_verified: user.is_email_verified,
+        is_2fa_enabled: user.is_2fa_enabled,
+        userId: user.id,
+      });
+     
+    } catch (err) {
+      console.error("Error verifying 2FA OTP:", err);
+      return res.status(500).json({ error: "Failed to verify 2FA OTP" });
+    }
+  },
+
 };
 
 export default authController;
