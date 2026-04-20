@@ -58,7 +58,6 @@ const chatController = {
 
   createChat: async (req, res) => {
     try {
-      console.log("IM HERE");
       const { name } = req.body;
       const userId = req.user.id;
 
@@ -91,10 +90,28 @@ const chatController = {
 
   sendMessage: async (req, res) => {
     try {
-      const { message_text, firstMessage, sentAt } = req.body;
+      const { message_text, firstMessage } = req.body;
+      if (!message_text?.trim()) {
+        return res
+          .status(400)
+          .json({ status: false, error: "message_text is required" });
+      }
+
       const userId = req.user.id;
       const { chatId } = req.params;
 
+      // Save user message FIRST
+      const userMsg = await prisma.message.create({
+        data: {
+          chatId,
+          senderId: userId,
+          sender_type: "user",
+          message_text,
+          sentAt: new Date(),
+        },
+      });
+
+      // Then fetch history and call AI
       let history = [];
       if (!firstMessage) {
         history = await prisma.message.findMany({
@@ -106,26 +123,15 @@ const chatController = {
 
       const novaResult = await getNovaResponse(message_text, history);
 
-      const [userMsg, aiMsg] = await prisma.$transaction([
-        prisma.message.create({
-          data: {
-            chatId,
-            senderId: userId,
-            sender_type: "user",
-            message_text,
-            sentAt,
-          },
-        }),
+      // Save AI response + update chat
+      const [aiMsg] = await prisma.$transaction([
         prisma.message.create({
           data: {
             chatId,
             senderId: null,
             sender_type: "bot",
             message_text: novaResult.message,
-            sentAt: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            sentAt: new Date(),
           },
         }),
         prisma.chat.update({
@@ -144,6 +150,63 @@ const chatController = {
       });
     } catch (error) {
       console.error("SendMessage Error:", error);
+      return res.status(500).json({ status: false, error: error.message });
+    }
+  },
+
+  getChatMessages: async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const userId = req.user.id;
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.max(1, parseInt(req.query.limit) || 20);
+      const skip = (page - 1) * limit;
+
+      const participant = await prisma.chatParticipant.findUnique({
+        where: {
+          chatId_userId: { chatId, userId },
+        },
+      });
+
+      if (!participant) {
+        return res.status(403).json({
+          status: false,
+          message: "You do not have access to this chat",
+        });
+      }
+
+      const [messages, totalCount] = await prisma.$transaction([
+        prisma.message.findMany({
+          where: { chatId },
+          orderBy: { sentAt: "desc" },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            senderId: true,
+            sender_type: true,
+            message_text: true,
+            sentAt: true,
+            is_edited: true,
+          },
+        }),
+        prisma.message.count({
+          where: { chatId },
+        }),
+      ]);
+
+      return res.status(200).json({
+        status: true,
+        data: messages,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      });
+    } catch (error) {
+      console.error("GetMessages Error:", error);
       return res.status(500).json({ status: false, error: error.message });
     }
   },
