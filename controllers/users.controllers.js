@@ -228,12 +228,14 @@ const userController = {
   },
   enable2FA: async (req, res) => {
     try {
+      console.log("Enabling 2FA...");
       const { id } = req.user;
 
       const user = await prisma.user.findUnique({
         where: { id },
-        select: { is_2fa_enabled: true },
+        select: { is_2fa_enabled: true, email: true },
       });
+      console.log(user);
 
       if (!user) {
         return res.status(404).json({
@@ -301,6 +303,7 @@ const userController = {
       return res.status(500).json({
         status: false,
         message: "Internal Server Error",
+        error: error.message,
       });
     }
   },
@@ -312,7 +315,7 @@ const userController = {
 
       const user = await prisma.user.findUnique({
         where: { id },
-        select: { is_2fa_enabled: true },
+        select: { is_2fa_enabled: true,email: true },
       });
 
       if (!user) {

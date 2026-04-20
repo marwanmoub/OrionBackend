@@ -26,6 +26,7 @@ export async function generateOTP(email) {
     `;
 
   try {
+    console.log(`Sending OTP to ${email}...`);
     await transporter.sendMail({
       from: `"Orion System" <${process.env.EMAIL_USER}>`,
       to: email,

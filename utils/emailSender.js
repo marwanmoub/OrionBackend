@@ -36,6 +36,7 @@ export async function sendAccDeletionNotice(email) {
     </div>
   `;
     try{
+      console.log(`Sending account deletion notice to ${email}...`);
         await transporter.sendMail({
             from: `"Orion System" <${process.env.EMAIL_USER}>`,
             to: email,
@@ -89,7 +90,7 @@ export async function sendAccDeletedFinal(email) {
         </div>
         <div style="padding: 30px;">
           <h2 style="color: #1a1a1a; border-bottom: 2px solid #eee; padding-bottom: 10px;">Account Restored</h2>
-          <p>Welcome back, joker. Your Orion account has been successfully removed from the deletion queue.</p>
+          <p>Welcome back. Your Orion account has been successfully removed from the deletion queue.</p>
           <p>All your data remains intact, and your access has been fully restored. The pending 10-day grace period is now void.</p>
           <p>You can continue your work exactly where you left off.</p>
         </div>
