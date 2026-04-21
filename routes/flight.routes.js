@@ -1,23 +1,15 @@
-const express = require("express");
-const router = express.Router();
-const {
-  associateUserFlight,
-  cancelFlight,
-  getFlights,
-} = require("../controllers/flightController");
+import flightController from "../controllers/flight.controller";
+import verifyToken from "../middlewares/auth";
+import express from "express";
 
-// Replace `authenticate` with whatever your auth middleware is called
-const authenticate = require("../middlewares/authenticate");
+const flightRouter = express.Router();
 
-// GET /flights?page=1&limit=10&status=scheduled&departure_airport=BEY&arrival_airport=DXB
-router.get("/", authenticate, getFlights);
+flightRouter.use(verifyToken);
 
-// POST /flights/associate
-// Body: { flight_number, passcode }
-router.post("/associate", authenticate, associateUserFlight);
+flightRouter.get("/", flightController.getUserFlights);
 
-// DELETE /flights/cancel/:userFlightId
-// Body: { password }
-router.delete("/cancel/:userFlightId", authenticate, cancelFlight);
+flightRouter.post("/associate", flightController.associateUserFlight);
 
-module.exports = router;
+flightRouter.delete("/cancel/:userFlightId", flightController.cancelFlight);
+
+export default flightRouter;

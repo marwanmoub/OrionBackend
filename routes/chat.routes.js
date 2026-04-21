@@ -1,6 +1,6 @@
 import express from "express";
 import verifyToken from "../middlewares/auth.js";
-import chatController from "../controllers/chat.controllers.js";
+import chatController from "../controllers/chat.controller.js";
 
 const chatRouter = express.Router();
 
