@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js";
+import argon2 from "argon2";
 
 const flightController = {
   associateUserFlight: async (req, res) => {
