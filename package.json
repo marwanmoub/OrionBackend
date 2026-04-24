@@ -15,6 +15,7 @@
   "dependencies": {
     "@google/genai": "^1.50.1",
     "@google/generative-ai": "^0.24.1",
+    "@onesignal/node-onesignal": "^5.5.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "argon2": "^0.44.0",
