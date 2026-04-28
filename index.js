@@ -6,6 +6,7 @@ import prisma from "./lib/prisma.js";
 import { sendAccDeletedFinal } from "./utils/emailSender.js";
 import cron from "node-cron";
 import flightRouter from "./routes/flight.routes.js";
+import mapRouter from "./routes/map.routes.js";
 
 const app = express();
 const PORT = 3005;
@@ -17,6 +18,7 @@ app.use("/auth", authRouter);
 app.use("/user", userRouter);
 app.use("/chat", chatRouter);
 app.use("/flight", flightRouter);
+app.use("/api/map", mapRouter);
 
 // This runs every hour (0 * * * *)
 cron.schedule("0 * * * *", async () => {

@@ -7,6 +7,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum MarkerType {
+  AVATAR
+  INFO
+  WAYPOINT
+}
+
 model User {
   id       String  @id @default(uuid())
   email    String  @unique
@@ -210,4 +216,14 @@ model Message {
 
   chat   Chat  @relation(fields: [chatId], references: [id])
   sender User? @relation(fields: [senderId], references: [id])
+}
+
+model Marker {
+  id       String     @id @default(uuid())
+  qrCodeId String
+  posX     Float
+  posY     Float
+  posZ     Float
+  label    String
+  type     MarkerType
 }
