@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch index.js",
-    "db:seed:flights": "node prisma/seedFlights.js"
+    "db:seed": "node prisma/seed-files.js",
+    "db:seed:flights": "node prisma/seed-files.js"
   },
   "keywords": [],
   "author": "",

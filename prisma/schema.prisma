@@ -7,12 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum MarkerType {
-  AVATAR
-  INFO
-  WAYPOINT
-}
-
 model User {
   id       String  @id @default(uuid())
   email    String  @unique
@@ -74,7 +68,7 @@ model Airport {
 
 model Flight {
   id            String @id @default(uuid())
-  flight_number String
+  flight_number String @unique
 
   departure_airport_id String
   arrival_airport_id   String
@@ -105,6 +99,8 @@ model UserFlight {
   flight Flight @relation(fields: [flightId], references: [id])
 
   guides Guide[]
+
+  @@unique([userId, flightId])
 }
 
 model Guide {
@@ -129,7 +125,7 @@ model CheckListTemplate {
   taskName                 String
   default_due_offset_hours Int
   is_mandatory             Boolean @default(false)
-  item_type                String
+  item_type                String  @unique
 
   checklistItems CheckListItem[]
 }
@@ -218,12 +214,28 @@ model Message {
   sender User? @relation(fields: [senderId], references: [id])
 }
 
-model Marker {
-  id       String     @id @default(uuid())
-  qrCodeId String
-  posX     Float
-  posY     Float
-  posZ     Float
-  label    String
-  type     MarkerType
+model ArModel {
+  id              String   @id @default(uuid())
+  slug            String   @unique
+  name            String
+  description     String?
+  category        String
+  asset_url       String
+  asset_format    String   @default("glb")
+  latitude        Float
+  longitude       Float
+  altitude_meters Float    @default(0)
+  position_x      Float    @default(0)
+  position_y      Float    @default(0)
+  position_z      Float    @default(0)
+  rotation_x      Float    @default(0)
+  rotation_y      Float    @default(0)
+  rotation_z      Float    @default(0)
+  scale           Float    @default(1)
+  is_active       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([is_active])
+  @@index([latitude, longitude])
 }
