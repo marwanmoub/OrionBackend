@@ -35,11 +35,14 @@ model User {
   createdAt DateTime @default(now())
 
   // Relations
-  settings      UserSettings?
-  chats         ChatParticipant[]
-  messages      Message[]
-  flights       UserFlight[]
-  notifications Notification[]
+  settings         UserSettings?
+  chats            ChatParticipant[]
+  messages         Message[]
+  flights          UserFlight[]
+  tickets          Ticket[]
+  checklistTasks   ChecklistTask[]
+  notifications    Notification[]
+  notificationLogs NotificationLog[]
 }
 
 model UserSettings {
@@ -49,6 +52,7 @@ model UserSettings {
   always_use_default_airport      Boolean @default(false)
   delete_old_chats_automatically  Boolean @default(false)
   change_user_state_automatically Boolean @default(false)
+  automatedStateManagement        Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -86,8 +90,12 @@ model Flight {
   departureAirport Airport @relation("DepartureAirport", fields: [departure_airport_id], references: [id])
   arrivalAirport   Airport @relation("ArrivalAirport", fields: [arrival_airport_id], references: [id])
 
-  userFlights UserFlight[]
-  guides      Guide[]
+  userFlights      UserFlight[]
+  tickets          Ticket[]
+  checklistTasks   ChecklistTask[]
+  arMarkers        ARMarker[]
+  notificationLogs NotificationLog[]
+  guides           Guide[]
 }
 
 model UserFlight {
@@ -98,9 +106,29 @@ model UserFlight {
   user   User   @relation(fields: [userId], references: [id])
   flight Flight @relation(fields: [flightId], references: [id])
 
-  guides Guide[]
+  guides         Guide[]
+  checklistTasks ChecklistTask[]
 
   @@unique([userId, flightId])
+}
+
+model Ticket {
+  id               String   @id @default(uuid())
+  userId           String
+  flightId         String
+  ticketNumber     String?  @unique
+  bookingReference String?
+  seatNumber       String?
+  qrCodePayload    String?
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  flight Flight @relation(fields: [flightId], references: [id])
+
+  @@unique([userId, flightId])
+  @@index([flightId])
 }
 
 model Guide {
@@ -118,6 +146,7 @@ model Guide {
   airport    Airport?   @relation(fields: [used_airport_id], references: [id])
 
   checklistItems CheckListItem[]
+  checklistTasks ChecklistTask[]
 }
 
 model CheckListTemplate {
@@ -128,6 +157,7 @@ model CheckListTemplate {
   item_type                String  @unique
 
   checklistItems CheckListItem[]
+  checklistTasks ChecklistTask[]
 }
 
 model CheckListItem {
@@ -141,6 +171,43 @@ model CheckListItem {
 
   guide    Guide              @relation(fields: [guideId], references: [id])
   template CheckListTemplate? @relation(fields: [templateId], references: [id])
+}
+
+enum ChecklistTaskStatus {
+  PENDING
+  COMPLETE
+}
+
+model ChecklistTask {
+  id               String              @id @default(uuid())
+  userId           String
+  flightId         String
+  userFlightId     String?
+  guideId          String?
+  title            String
+  itemType         String?
+  due_time         DateTime
+  dueOffsetMinutes Int?
+  posX             Float
+  posY             Float
+  radiusMeters     Float               @default(5)
+  status           ChecklistTaskStatus @default(PENDING)
+  alertSent        Boolean             @default(false)
+  completedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user                User               @relation(fields: [userId], references: [id])
+  flight              Flight             @relation(fields: [flightId], references: [id])
+  userFlight          UserFlight?        @relation(fields: [userFlightId], references: [id])
+  guide               Guide?             @relation(fields: [guideId], references: [id])
+  arMarkers           ARMarker[]
+  checkListTemplate   CheckListTemplate? @relation(fields: [checkListTemplateId], references: [id])
+  checkListTemplateId String?
+
+  @@index([userId, flightId, status])
+  @@index([userFlightId])
+  @@index([posX, posY])
 }
 
 model Location {
@@ -173,6 +240,29 @@ model Notification {
   readAt    DateTime?
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model NotificationLog {
+  id                String   @id @default(uuid())
+  userId            String?
+  flightId          String?
+  type              String
+  title             String
+  message           String
+  reaction_code     String?
+  provider          String   @default("OneSignal")
+  providerMessageId String?
+  payload           Json?
+  status            String   @default("PENDING")
+  sentAt            DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  flight Flight? @relation(fields: [flightId], references: [id])
+
+  @@index([userId])
+  @@index([flightId])
+  @@index([sentAt])
 }
 
 model Chat {
@@ -238,4 +328,31 @@ model ArModel {
 
   @@index([is_active])
   @@index([latitude, longitude])
+}
+
+model ARMarker {
+  id              String   @id @default(uuid())
+  flightId        String?
+  checklistTaskId String?
+  slug            String   @unique
+  name            String
+  description     String?
+  poiType         String   @default("POI")
+  asset_url       String?
+  asset_format    String   @default("glb")
+  posX            Float
+  posY            Float
+  posZ            Float    @default(0)
+  radiusMeters    Float    @default(5)
+  reaction_code   String?
+  is_active       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  flight        Flight?        @relation(fields: [flightId], references: [id])
+  checklistTask ChecklistTask? @relation(fields: [checklistTaskId], references: [id])
+
+  @@index([flightId])
+  @@index([is_active])
+  @@index([posX, posY])
 }

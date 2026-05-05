@@ -9,6 +9,9 @@ flightRouter.use(verifyToken);
 flightRouter.get("/", flightController.getUserFlights);
 
 flightRouter.post("/associate", flightController.associateUserFlight);
+flightRouter.patch("/simulated", flightController.simulateFlight);
+flightRouter.patch("/simulated/:flightId", flightController.simulateFlight);
+flightRouter.post("/simulated/:flightId", flightController.simulateFlight);
 
 flightRouter.get("/:userFlightId/checklist", flightController.getChecklist);
 flightRouter.put("/:userFlightId/checklist", flightController.updateChecklist);

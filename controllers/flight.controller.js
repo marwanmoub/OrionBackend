@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import argon2 from "argon2";
+import { simulateFlightUpdate } from "../services/flightSimulation.service.js";
 
 const CHECKLIST_TEMPLATE_SEEDS = [
   {
@@ -31,6 +32,13 @@ const CHECKLIST_TEMPLATE_SEEDS = [
 const CHECKLIST_ORDER = new Map(
   CHECKLIST_TEMPLATE_SEEDS.map((item, index) => [item.item_type, index]),
 );
+
+const CHECKLIST_TASK_POIS = {
+  "check-in": { posX: 12, posY: 18, radiusMeters: 8 },
+  security: { posX: 38, posY: 52, radiusMeters: 8 },
+  boarding: { posX: 74, posY: 86, radiusMeters: 10 },
+  arrival: { posX: 18, posY: 118, radiusMeters: 10 },
+};
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -120,6 +128,55 @@ const ensureChecklistTemplates = async (client = prisma) => {
   );
 };
 
+const ensureChecklistTasks = async (
+  userFlight,
+  guide,
+  templates,
+  client = prisma,
+) => {
+  const existingTasks = await client.checklistTask.findMany({
+    where: { userFlightId: userFlight.id },
+    select: { itemType: true },
+  });
+  const existingTaskTypes = new Set(
+    existingTasks.map((task) => task.itemType).filter(Boolean),
+  );
+  const missingTemplates = templates.filter(
+    (template) => !existingTaskTypes.has(template.item_type),
+  );
+
+  if (missingTemplates.length === 0) {
+    return;
+  }
+
+  await client.checklistTask.createMany({
+    data: missingTemplates.map((template, index) => {
+      const fallbackPosition = {
+        posX: 20 + index * 20,
+        posY: 20 + index * 20,
+        radiusMeters: 8,
+      };
+      const poi = CHECKLIST_TASK_POIS[template.item_type] ?? fallbackPosition;
+
+      return {
+        userId: userFlight.userId,
+        flightId: userFlight.flightId,
+        userFlightId: userFlight.id,
+        guideId: guide.id,
+        title: template.taskName,
+        itemType: template.item_type,
+        checkListTemplateId: template.id,
+        due_time: getChecklistDueTime(userFlight.flight, template),
+        dueOffsetMinutes: template.default_due_offset_hours * 60,
+        posX: poi.posX,
+        posY: poi.posY,
+        radiusMeters: poi.radiusMeters,
+        status: "PENDING",
+      };
+    }),
+  });
+};
+
 const ensureGuideForUserFlight = async (userFlight, client = prisma) => {
   const templates = await ensureChecklistTemplates(client);
   let guide = await client.guide.findFirst({
@@ -149,6 +206,8 @@ const ensureGuideForUserFlight = async (userFlight, client = prisma) => {
     });
   }
 
+  await ensureChecklistTasks(userFlight, guide, templates, client);
+
   const existingTemplateIds = new Set(
     guide.checklistItems.map((item) => item.templateId).filter(Boolean),
   );
@@ -172,6 +231,9 @@ const ensureGuideForUserFlight = async (userFlight, client = prisma) => {
     include: {
       checklistItems: {
         include: { template: true },
+        orderBy: { due_time: "asc" },
+      },
+      checklistTasks: {
         orderBy: { due_time: "asc" },
       },
     },
@@ -199,6 +261,31 @@ const formatChecklistItems = (items = []) =>
       isMandatory: item.template?.is_mandatory ?? false,
     }));
 
+const formatChecklistTasks = (tasks = []) =>
+  [...tasks]
+    .sort((a, b) => {
+      const aType = a.itemType;
+      const bType = b.itemType;
+      return (
+        (CHECKLIST_ORDER.get(aType) ?? 999) -
+        (CHECKLIST_ORDER.get(bType) ?? 999)
+      );
+    })
+    .map((task) => ({
+      id: task.id,
+      title: task.title,
+      itemType: task.itemType,
+      dueTime: task.due_time.toISOString(),
+      due_time: task.due_time.toISOString(),
+      dueOffsetMinutes: task.dueOffsetMinutes,
+      posX: task.posX,
+      posY: task.posY,
+      radiusMeters: task.radiusMeters,
+      status: task.status,
+      isCompleted: task.status === "COMPLETE",
+      completedAt: task.completedAt?.toISOString() ?? null,
+    }));
+
 const getPrimaryGuide = (userFlight) => userFlight.guides?.[0] ?? null;
 
 const formatRegisteredFlight = (userFlight, now = new Date()) => {
@@ -214,6 +301,7 @@ const formatRegisteredFlight = (userFlight, now = new Date()) => {
     persisted_status: userFlight.flight.status,
     simulation,
     checklistItems: formatChecklistItems(guide?.checklistItems ?? []),
+    checklistTasks: formatChecklistTasks(guide?.checklistTasks ?? []),
   };
 };
 
@@ -234,6 +322,7 @@ const formatAssociationPayload = (userFlight, now = new Date()) => {
       simulation,
     },
     checklistItems: formatChecklistItems(guide?.checklistItems ?? []),
+    checklistTasks: formatChecklistTasks(guide?.checklistTasks ?? []),
   };
 };
 
@@ -254,6 +343,9 @@ const getUserFlightInclude = {
     include: {
       checklistItems: {
         include: { template: true },
+        orderBy: { due_time: "asc" },
+      },
+      checklistTasks: {
         orderBy: { due_time: "asc" },
       },
     },
@@ -291,6 +383,7 @@ const getChecklistResponse = async (userFlightId, userId) => {
     userFlightId,
     guideId: guide?.id ?? null,
     checklistItems: formatChecklistItems(guide?.checklistItems ?? []),
+    checklistTasks: formatChecklistTasks(guide?.checklistTasks ?? []),
   };
 };
 
@@ -566,9 +659,22 @@ const flightController = {
             },
           }),
         );
+      const taskUpdates = Array.from(stateById.entries()).map(
+        ([itemType, isCompleted]) =>
+          prisma.checklistTask.updateMany({
+            where: {
+              userFlightId: userFlight.id,
+              itemType,
+            },
+            data: {
+              status: isCompleted ? "COMPLETE" : "PENDING",
+              completedAt: isCompleted ? new Date() : null,
+            },
+          }),
+      );
 
-      if (checklistUpdates.length > 0) {
-        await prisma.$transaction(checklistUpdates);
+      if (checklistUpdates.length > 0 || taskUpdates.length > 0) {
+        await prisma.$transaction([...checklistUpdates, ...taskUpdates]);
       }
 
       const checklist = await getChecklistResponse(userFlight.id, req.user.id);
@@ -641,6 +747,33 @@ const flightController = {
     } catch (error) {
       console.error("updateChecklistItem error:", error);
       return res.status(500).json({ status: false, error: error.message });
+    }
+  },
+
+  simulateFlight: async (req, res) => {
+    try {
+      const result = await simulateFlightUpdate({
+        flightId: req.params.flightId,
+        flight_number: req.body.flight_number,
+        gate: req.body.gate,
+        delayMinutes: req.body.delayMinutes,
+        addDelayMinutes: req.body.addDelayMinutes,
+        status: req.body.status,
+      });
+
+      return res.status(result.changed ? 200 : 202).json({
+        status: true,
+        message: result.changed
+          ? "Simulated flight update applied."
+          : "No simulated flight changes were needed.",
+        data: result,
+      });
+    } catch (error) {
+      console.error("simulateFlight error:", error);
+      return res.status(error.statusCode ?? 500).json({
+        status: false,
+        message: error.message,
+      });
     }
   },
 };

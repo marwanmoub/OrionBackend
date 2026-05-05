@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js";
+import { sendOneSignalNotification } from "../utils/notifications.js";
 
 const DEFAULT_RADIUS_METERS = 250;
 const DEFAULT_LIMIT = 50;
@@ -33,6 +34,19 @@ function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
 
   return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+const calculateLocalDistance = (x1, y1, x2, y2) =>
+  Math.hypot(Number(x2) - Number(x1), Number(y2) - Number(y1));
+
+export const hasEnteredPoiZone = ({ x, y }, poi) =>
+  calculateLocalDistance(x, y, poi.posX, poi.posY) <=
+  (poi.radiusMeters ?? 5);
+
+const isAutomatedStateManagementEnabled = (settings) =>
+  Boolean(
+    settings?.automatedStateManagement ||
+      settings?.change_user_state_automatically,
+  );
 
 function formatARModel(model, distanceMeters = null) {
   return {
@@ -69,6 +83,48 @@ function formatARModel(model, distanceMeters = null) {
     }),
   };
 }
+
+const formatChecklistTask = (task, distanceMeters = null) => ({
+  id: task.id,
+  title: task.title,
+  itemType: task.itemType,
+  dueTime: task.due_time.toISOString(),
+  due_time: task.due_time.toISOString(),
+  dueOffsetMinutes: task.dueOffsetMinutes,
+  posX: task.posX,
+  posY: task.posY,
+  radiusMeters: task.radiusMeters,
+  status: task.status,
+  completedAt: task.completedAt?.toISOString() ?? null,
+  ...(distanceMeters !== null && {
+    distanceMeters: Math.round(distanceMeters * 100) / 100,
+  }),
+});
+
+const syncLegacyChecklistItem = async (task) => {
+  if (!task.guideId || !task.itemType) {
+    return;
+  }
+
+  const checklistItem = await prisma.checkListItem.findFirst({
+    where: {
+      guideId: task.guideId,
+      template: {
+        item_type: task.itemType,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!checklistItem) {
+    return;
+  }
+
+  await prisma.checkListItem.update({
+    where: { id: checklistItem.id },
+    data: { is_completed: true },
+  });
+};
 
 const mapController = {
   getARModels: async (req, res) => {
@@ -158,6 +214,133 @@ const mapController = {
       }
 
       console.error("getARModels error:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+  },
+
+  boundaryCrossing: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const x = parseNumber(req.body.x ?? req.body.posX, "x");
+      const y = parseNumber(req.body.y ?? req.body.posY, "y");
+      const { flightId, userFlightId, taskId } = req.body;
+
+      if (x === null || y === null) {
+        return res.status(400).json({
+          status: false,
+          message: "x and y are required local coordinates.",
+        });
+      }
+
+      const [settings, pendingTasks] = await prisma.$transaction([
+        prisma.userSettings.findUnique({ where: { userId } }),
+        prisma.checklistTask.findMany({
+          where: {
+            userId,
+            status: "PENDING",
+            ...(taskId && { id: taskId }),
+            ...(flightId && { flightId }),
+            ...(userFlightId && { userFlightId }),
+          },
+          include: {
+            flight: {
+              select: {
+                id: true,
+                flight_number: true,
+              },
+            },
+          },
+          orderBy: { due_time: "asc" },
+        }),
+      ]);
+
+      const entered = pendingTasks
+        .map((task) => ({
+          task,
+          distanceMeters: calculateLocalDistance(x, y, task.posX, task.posY),
+        }))
+        .filter(({ task, distanceMeters }) => distanceMeters <= task.radiusMeters)
+        .sort((a, b) => a.distanceMeters - b.distanceMeters)[0];
+
+      if (!entered) {
+        return res.status(200).json({
+          status: true,
+          entered: false,
+          message: "No POI boundary was crossed for a pending task.",
+        });
+      }
+
+      const automated = isAutomatedStateManagementEnabled(settings);
+
+      if (automated) {
+        const updatedTask = await prisma.checklistTask.update({
+          where: { id: entered.task.id },
+          data: {
+            status: "COMPLETE",
+            completedAt: new Date(),
+          },
+        });
+
+        await syncLegacyChecklistItem(updatedTask);
+
+        await sendOneSignalNotification({
+          userId,
+          flightId: updatedTask.flightId,
+          type: "Normal",
+          title: "Journey Task Complete",
+          message: `${updatedTask.title} was completed automatically.`,
+          reaction_code: "POSITIVE",
+          voiceScript: `${updatedTask.title} is complete.`,
+          deepLinkAction: `orion://checklist/${updatedTask.id}`,
+          data: {
+            event: "CHECKLIST_TASK_AUTO_COMPLETED",
+            taskId: updatedTask.id,
+          },
+        });
+
+        return res.status(200).json({
+          status: true,
+          entered: true,
+          action: "COMPLETED",
+          automatedStateManagement: true,
+          data: formatChecklistTask(updatedTask, entered.distanceMeters),
+        });
+      }
+
+      await sendOneSignalNotification({
+        userId,
+        flightId: entered.task.flightId,
+        type: "Normal",
+        title: "Confirm Journey Task",
+        message: `It looks like you reached ${entered.task.title}. Mark it complete?`,
+        reaction_code: "PROMPT",
+        voiceScript: `It looks like you reached ${entered.task.title}. Would you like to mark it complete?`,
+        deepLinkAction: `orion://checklist/${entered.task.id}/confirm`,
+        data: {
+          event: "CHECKLIST_TASK_CONFIRMATION_REQUIRED",
+          taskId: entered.task.id,
+        },
+      });
+
+      return res.status(200).json({
+        status: true,
+        entered: true,
+        action: "PROMPTED",
+        automatedStateManagement: false,
+        data: formatChecklistTask(entered.task, entered.distanceMeters),
+      });
+    } catch (error) {
+      if (error.message?.includes("must be a valid number")) {
+        return res.status(400).json({
+          status: false,
+          message: error.message,
+        });
+      }
+
+      console.error("boundaryCrossing error:", error);
       return res.status(500).json({
         status: false,
         message: "Internal Server Error",
