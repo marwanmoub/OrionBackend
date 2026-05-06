@@ -436,7 +436,34 @@ const userController = {
         message: "Internal Server Error",
       });
     }
-  } 
+  },
+  updateSettings: async (req, res) => {
+    try {
+      const { id } = req.user;
+      const updatedData = req.body;
+
+      const settings = await prisma.userSettings.upsert({
+        where: { userId: id },
+        update: updatedData,
+        create: {
+          ...updatedData,
+          userId: id,
+        },
+      });
+
+      return res.status(200).json({
+        status: true,
+        message: "Settings updated successfully",
+        data: settings,
+      });
+    } catch (error) {
+      console.error("Update Settings Error:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+  },
 };
 
 export default userController;

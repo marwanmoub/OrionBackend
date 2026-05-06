@@ -1,6 +1,7 @@
 import express from "express";
 import verifyToken from "../middlewares/auth.js";
 import chatController from "../controllers/chat.controller.js";
+import novaCommandMiddleware from "../middlewares/novaCommand.js";
 
 const chatRouter = express.Router();
 
@@ -11,7 +12,7 @@ chatRouter.get("/", chatController.getAllChats);
 
 chatRouter.post("/", chatController.createChat);
 
-chatRouter.post("/:chatId/message", chatController.sendMessage);
+chatRouter.post("/:chatId/message", novaCommandMiddleware, chatController.sendMessage);
 
 chatRouter.get("/:chatId/messages", chatController.getChatMessages);
 

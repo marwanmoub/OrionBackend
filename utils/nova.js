@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { sendOneSignalNotification } from "./notifications.js";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -55,4 +56,56 @@ export const getNovaResponse = async (userMessage, history = []) => {
     console.error("Nova AI Error:", error);
     throw error;
   }
+};
+
+export const handleContextualAlert = async ({
+  userId,
+  flightId,
+  title,
+  message,
+  type = "Alert",
+  reaction_code = "CONCERNED",
+  voiceScript,
+  deepLinkAction = "orion://nova/alert",
+  data = {},
+}) =>
+  sendOneSignalNotification({
+    userId,
+    flightId,
+    title,
+    message,
+    type,
+    reaction_code,
+    voiceScript,
+    deepLinkAction,
+    data: {
+      source: "nova-contextual-alert",
+      ...data,
+    },
+  });
+
+export const handleFlightDelayContextualAlert = async ({
+  userId,
+  flight,
+  delayMinutes,
+}) => {
+  const flightLabel = flight.flight_number ?? "your flight";
+  const title = "Flight Delay Alert";
+  const message = `${flightLabel} is now delayed by ${delayMinutes} minutes. Nova will keep your checklist timing in sync.`;
+
+  return handleContextualAlert({
+    userId,
+    flightId: flight.id,
+    title,
+    message,
+    type: "Alert",
+    reaction_code: "CONCERNED",
+    voiceScript: `I noticed a delay for ${flightLabel}. The departure is now ${delayMinutes} minutes later than scheduled.`,
+    deepLinkAction: `orion://flight/${flight.id}`,
+    data: {
+      event: "FLIGHT_DELAY_SIMULATED",
+      delayMinutes,
+      flightNumber: flight.flight_number,
+    },
+  });
 };
