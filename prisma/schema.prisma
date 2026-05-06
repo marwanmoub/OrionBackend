@@ -107,7 +107,14 @@ model Guide {
   userFlightId          String
   guide_generation_time DateTime
 
-  departure_from_home_time DateTime?
+  origin_address          String?  
+  origin_lat              Float?   // Latitude
+  origin_lng              Float?   // Longitude
+  origin_place_id         String?  
+
+  departure_from_home_time Int?
+
+
   used_airport_id          String?
   guide_pdf_path           String?
 
