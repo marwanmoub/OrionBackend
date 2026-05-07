@@ -1,0 +1,96 @@
+{
+  "title": "First-Time Traveler Airport Guide",
+  "sections": [
+    {
+      "id": "arrival_at_airport",
+      "title": "Arriving at the Airport",
+      "icon": "✈️",
+      "tips": [
+        "Arrive at least 2.5–3 hours before international flights, or 1.5–2 hours for domestic.",
+        "Follow signage for your airline or terminal. When in doubt, ask airport staff.",
+        "Locate trolleys near the entrance if you have heavy luggage.",
+        "Keep your booking confirmation or e-ticket accessible on your phone."
+      ]
+    },
+    {
+      "id": "check_in",
+      "title": "Check-In",
+      "icon": "🎫",
+      "tips": [
+        "Find your airline's check-in counters. The screen displays show which desks are open.",
+        "Online check-in (via the airline's app or website) saves time – do it 24 hours before departure.",
+        "Hand over your passport (and visa if required) to the agent at the counter.",
+        "Confirm your seat assignment and ask for a window or aisle if you have a preference.",
+        "Collect your boarding pass – it shows your gate, seat number, and boarding time."
+      ]
+    },
+    {
+      "id": "baggage_drop",
+      "title": "Baggage Drop",
+      "icon": "🧳",
+      "tips": [
+        "If you checked in online, use the dedicated 'Bag Drop' counters to save time.",
+        "Remove prohibited items (sharp objects, liquids over 100 ml) before reaching the counter.",
+        "Attach a luggage tag with your name and contact number in case it gets lost.",
+        "Keep your baggage receipt – you'll need it to claim your bag at the destination.",
+        "Never leave your bag unattended at the airport."
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Security Screening",
+      "icon": "🔒",
+      "tips": [
+        "Place laptops, tablets, and large electronics in a separate tray.",
+        "Remove your belt, watch, and items from your pockets before going through the scanner.",
+        "Liquids must be in containers of 100 ml or less and placed in a clear, resealable bag (1 litre max).",
+        "Wear easy-to-remove shoes if possible.",
+        "Follow the security officer's instructions calmly; they are there to keep everyone safe.",
+        "Collect all your belongings from the trays before moving on."
+      ]
+    },
+    {
+      "id": "passport_control",
+      "title": "Passport Control",
+      "icon": "🛂",
+      "tips": [
+        "For international travel, you will pass through passport control after security.",
+        "Have your passport open to the photo page and your boarding pass ready.",
+        "Many airports have e-Gates for eligible passport holders – follow the instructions on the screen.",
+        "Answer the officer's questions honestly and concisely.",
+        "Do not use your phone while standing in the queue or at the counter."
+      ]
+    },
+    {
+      "id": "finding_gate",
+      "title": "Finding Your Gate",
+      "icon": "🗺️",
+      "tips": [
+        "Your gate number is printed on your boarding pass (e.g., B14).",
+        "Follow the overhead signs to your concourse and gate.",
+        "Gates can change – check the departure screens regularly.",
+        "Some airports have shuttle trains or buses between terminals; allow extra time.",
+        "Grab food or water before reaching the gate area if needed."
+      ]
+    },
+    {
+      "id": "boarding",
+      "title": "Boarding",
+      "icon": "🚪",
+      "tips": [
+        "Listen for boarding announcements. Most airlines board by zone or seat row.",
+        "Have your boarding pass (printed or on your phone) and passport ready to scan.",
+        "Store your carry-on bag in the overhead locker above your seat.",
+        "Place your personal item (backpack, handbag) under the seat in front of you.",
+        "Sit in your assigned seat – the crew may need to re-balance the aircraft.",
+        "Turn your phone to airplane mode once the doors close."
+      ]
+    }
+  ],
+  "general_reminders": [
+    "Stay hydrated – airports and planes are very dry environments.",
+    "Keep your documents (passport, boarding pass, visa) in one secure place at all times.",
+    "If you feel lost or anxious, airport information desks and airline staff are always happy to help.",
+    "Allow extra time for everything – rushing is the main cause of missed flights."
+  ]
+}
