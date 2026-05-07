@@ -1,29 +1,18 @@
 import express from "express";
 import http from "http";
-import { Server } from "socket.io";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/users.routes.js";
 import chatRouter from "./routes/chat.routes.js";
-import guideRouter from  "./routes/guide.routes.js";
+import guideRouter from "./routes/guide.routes.js";
 import prisma from "./lib/prisma.js";
 import { sendAccDeletedFinal } from "./utils/emailSender.js";
 import cron from "node-cron";
 import flightRouter from "./routes/flight.routes.js";
 import mapRouter from "./routes/map.routes.js";
 import staticRouter from "./routes/static.routes.js";
-import { initializeSocket } from "./services/socket.service.js";
 
 const app = express();
-const PORT = process.env.PORT | 3005;
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
-});
-
-initializeSocket(io);
-app.set("io", io);
+const PORT = process.env.PORT || 3005;
 
 app.use(express.json());
 
@@ -35,7 +24,7 @@ app.use("/flight", flightRouter);
 app.use("/api/map", mapRouter);
 app.use("/static", staticRouter);
 app.use("/api/static", staticRouter);
-app.use("/guide", guideRouter);       
+app.use("/guide", guideRouter);
 
 // This runs every hour (0 * * * *)
 cron.schedule("0 * * * *", async () => {
@@ -55,8 +44,6 @@ cron.schedule("0 * * * *", async () => {
   }
 });
 
-schedulePendingGuideAlerts();                                                 
-
-server.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
