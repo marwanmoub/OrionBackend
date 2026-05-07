@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/users.routes.js";
 import chatRouter from "./routes/chat.routes.js";
+import guideRouter from  "./routes/guide.routes.js";
 import prisma from "./lib/prisma.js";
 import { sendAccDeletedFinal } from "./utils/emailSender.js";
 import cron from "node-cron";
@@ -34,6 +35,7 @@ app.use("/flight", flightRouter);
 app.use("/api/map", mapRouter);
 app.use("/static", staticRouter);
 app.use("/api/static", staticRouter);
+app.use("/guide", guideRouter);       
 
 // This runs every hour (0 * * * *)
 cron.schedule("0 * * * *", async () => {
@@ -52,6 +54,9 @@ cron.schedule("0 * * * *", async () => {
     console.log(`Deleted user: ${user.id}`);
   }
 });
+
+schedulePendingGuideAlerts();                                                 
+
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
