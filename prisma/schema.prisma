@@ -142,7 +142,7 @@ model Guide {
   origin_lng              Float?   // Longitude 
 
   departure_from_home_time Int?
-
+  departure_from_home_at   DateTime?
 
   used_airport_id          String?
   guide_pdf_path           String?
@@ -151,6 +151,8 @@ model Guide {
   userFlight UserFlight @relation(fields: [userFlightId], references: [id])
   airport    Airport?   @relation(fields: [used_airport_id], references: [id])
 
+
+  @@unique([flightId, userFlightId])
   checklistItems CheckListItem[]
   checklistTasks ChecklistTask[]
 }
