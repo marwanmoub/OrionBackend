@@ -14,7 +14,7 @@ import staticRouter from "./routes/static.routes.js";
 import { initializeSocket } from "./services/socket.service.js";
 
 const app = express();
-const PORT = 3005;
+const PORT = process.env.PORT | 3005;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -49,7 +49,7 @@ cron.schedule("0 * * * *", async () => {
   });
 
   for (const user of expiredAccounts) {
-    await db.user.delete({ where: { id: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
     await sendAccDeletedFinal(user.email);
     console.log(`Deleted user: ${user.id}`);
   }
