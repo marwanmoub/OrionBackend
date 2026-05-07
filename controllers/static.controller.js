@@ -1,6 +1,14 @@
 import prisma from "../lib/prisma.js";
+import { getInformationZoneItems } from "../utils/informationZone.js";
 
 const staticController = {
+  getInformationZone: async (_req, res) =>
+    res.status(200).json({
+      status: true,
+      message: "Information Zone retrieved successfully",
+      data: getInformationZoneItems(),
+    }),
+
   getFAQ: async (req, res) => {
     try {
       const faqs = await prisma.staticQuestions.findMany({

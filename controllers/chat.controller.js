@@ -111,6 +111,34 @@ const chatController = {
         },
       });
 
+      if (req.novaCommand) {
+        const [commandMsg] = await prisma.$transaction([
+          prisma.message.create({
+            data: {
+              chatId,
+              senderId: null,
+              sender_type: "bot",
+              message_text: req.novaCommand.message,
+              sentAt: new Date(),
+            },
+          }),
+          prisma.chat.update({
+            where: { id: chatId },
+            data: {
+              last_activity_at: new Date(),
+              ...(firstMessage && { name: req.novaCommand.title }),
+            },
+          }),
+        ]);
+
+        return res.status(201).json({
+          status: true,
+          data: commandMsg,
+          newTitle: firstMessage ? req.novaCommand.title : null,
+          command: req.novaCommand,
+        });
+      }
+
       // Then fetch history and call AI
       let history = [];
       if (!firstMessage) {

@@ -184,6 +184,9 @@ const flightController = {
                 arrivalAirport: {
                   select: { iata_code: true, name: true, city: true },
                 },
+                _count: {
+                  select: { guides: true },
+                },
               },
             },
           },
@@ -211,6 +214,119 @@ const flightController = {
       });
     } catch (error) {
       console.error("getUserFlights error:", error);
+      return res.status(500).json({ status: false, error: error.message });
+    }
+  },
+
+  getUserFlightsWithGuides: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+      const skip = (page - 1) * limit;
+
+      const where = {
+        userId: userId,
+        flight: {
+          is_cancelled: false,
+        },
+        guides: {
+          some: {},
+        },
+      };
+
+      const [userFlights, totalCount] = await prisma.$transaction([
+        prisma.userFlight.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            flight: {
+              scheduled_departure_time: "asc",
+            },
+          },
+          include: {
+            flight: {
+              include: {
+                departureAirport: {
+                  select: { iata_code: true, name: true, city: true },
+                },
+                arrivalAirport: {
+                  select: { iata_code: true, name: true, city: true },
+                },
+              },
+            },
+          },
+        }),
+        prisma.userFlight.count({ where }),
+      ]);
+
+      const sanitizedFlights = userFlights.map((uf) => {
+        const { passcode, ...flightDetails } = uf.flight;
+
+        return {
+          userFlightId: uf.id,
+          ...flightDetails,
+        };
+      });
+
+      return res.status(200).json({
+        status: true,
+        data: sanitizedFlights,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      });
+    } catch (error) {
+      console.error("getUserFlightsWithGuides error:", error);
+      return res.status(500).json({ status: false, error: error.message });
+    }
+  },
+
+  getFlight: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const userFlight = await prisma.userFlight.findFirst({
+        where: {
+          id: id,
+          userId: userId,
+        },
+        include: {
+          flight: {
+            include: {
+              departureAirport: true,
+              arrivalAirport: true,
+            },
+          },
+        },
+      });
+
+      if (!userFlight) {
+        return res.status(404).json({
+          status: false,
+          message: "Flight record not found.",
+        });
+      }
+
+      const { passcode, ...flightDetails } = userFlight.flight;
+
+      const sanitizedData = {
+        userFlightId: userFlight.id,
+        ...flightDetails,
+      };
+
+      return res.status(200).json({
+        status: true,
+        data: sanitizedData,
+      });
+    } catch (error) {
+      console.error("getFlight error:", error);
       return res.status(500).json({ status: false, error: error.message });
     }
   },
