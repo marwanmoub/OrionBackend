@@ -139,8 +139,7 @@ model Guide {
 
   origin_address          String?  
   origin_lat              Float?   // Latitude
-  origin_lng              Float?   // Longitude
-  origin_place_id         String?  
+  origin_lng              Float?   // Longitude 
 
   departure_from_home_time Int?
 
