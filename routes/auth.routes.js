@@ -9,11 +9,13 @@ authRouter.post("/refresh-token", authController.refreshToken);
 
 authRouter.post("/login", authController.login);
 authRouter.post("/signUp", authController.signUp);
-authRouter.get("/logout/:userId", verifyToken, authController.logout);
+authRouter.get("/logout/:userId", authController.logout);
 
 authRouter.post("/pass-reset", authController.forgotPassword);
+
 //this one checks otp specifically for login and gives the tokens
 authRouter.post("/check-2fa-login", authController.check2FA);
+
 //OTP Related
 authRouter.post("/verify-email", authController.OTP.checkOTP);
 authRouter.post("/resend-otp", async (req, res) => {

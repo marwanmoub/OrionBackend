@@ -7,18 +7,10 @@ const flightRouter = express.Router();
 flightRouter.use(verifyToken);
 
 flightRouter.get("/", flightController.getUserFlights);
+flightRouter.get("/with-guides", flightController.getUserFlightsWithGuides);
+flightRouter.get("/:id", flightController.getFlight);
 
 flightRouter.post("/associate", flightController.associateUserFlight);
-flightRouter.patch("/simulated", flightController.simulateFlight);
-flightRouter.patch("/simulated/:flightId", flightController.simulateFlight);
-flightRouter.post("/simulated/:flightId", flightController.simulateFlight);
-
-flightRouter.get("/:userFlightId/checklist", flightController.getChecklist);
-flightRouter.put("/:userFlightId/checklist", flightController.updateChecklist);
-flightRouter.patch(
-  "/:userFlightId/checklist/:itemId",
-  flightController.updateChecklistItem,
-);
 
 flightRouter.delete("/cancel/:userFlightId", flightController.cancelFlight);
 
